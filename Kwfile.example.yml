@@ -1,0 +1,18 @@
+version: 1.0
+
+migrate:
+    pg_dump: /usr/bin/pg_dump
+    folder: migrations
+    database:
+        driver: postgresql
+        host: localhost
+        port: 5432
+        name: asgard
+        user: user
+        password: s3cret
+    schemas:
+        activity:
+            excludes:
+                - virtual_accounts
+            with_data:
+                - admin_params
