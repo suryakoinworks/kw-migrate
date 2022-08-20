@@ -108,18 +108,18 @@ func (s schema) ListTables(excludes []string) []string {
 			continue
 		}
 
-		exits := false
+		skip := false
 		for _, v := range excludes {
 			if v == table {
-				exits = true
+				skip = true
 
 				break
 			}
 		}
 
-		if !exits {
+		if !skip {
 			tables = append(tables, table)
-			exits = false
+			skip = false
 		}
 	}
 
