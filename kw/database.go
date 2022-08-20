@@ -10,7 +10,7 @@ import (
 
 func Connect(database Database) (*sql.DB, error) {
 	switch database.Driver {
-	case "postgresql":
+	case "postgres":
 		return postgresql(database)
 	}
 
