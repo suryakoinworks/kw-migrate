@@ -12,16 +12,16 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func NewMigrator(db *sql.DB, path string) *migrate.Migrate {
+func NewMigrator(db *sql.DB, database, path string) *migrate.Migrate {
 	driver, err := postgres.WithInstance(db, &postgres.Config{})
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
 
-	e, err := migrate.NewWithDatabaseInstance(fmt.Sprintf("file://%s", path), "postgres", driver)
+	migrate, err := migrate.NewWithDatabaseInstance(fmt.Sprintf("file://%s", path), database, driver)
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
 
-	return e
+	return migrate
 }
