@@ -46,7 +46,7 @@ func main() {
 							}
 
 							for k, schema := range config.Migrate.Schemas {
-								db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXIST %s", k))
+								db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", k))
 
 								migrator := migrate.NewMigrator(db, i, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
 								err := migrator.Up()
@@ -76,7 +76,7 @@ func main() {
 						}
 
 						for k, schema := range config.Migrate.Schemas {
-							db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXIST %s", k))
+							db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", k))
 
 							migrator := migrate.NewMigrator(db, source, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
 							err := migrator.Up()
@@ -110,7 +110,10 @@ func main() {
 						return err
 					}
 
-					db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXIST %s", schema))
+					_, err = db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", schema))
+					if err != nil {
+						return err
+					}
 
 					migrator := migrate.NewMigrator(db, source, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
 
@@ -129,14 +132,16 @@ func main() {
 				Action: func(ctx *cli.Context) error {
 					config := kw.Parse("Kwfile.yml")
 					if ctx.Bool("all-connection") {
-						for k, source := range config.Migrate.Connections {
+						for i, source := range config.Migrate.Connections {
 							db, err := kw.Connect(source)
 							if err != nil {
 								return err
 							}
 
-							for _, schema := range config.Migrate.Schemas {
-								migrator := migrate.NewMigrator(db, k, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
+							for k, schema := range config.Migrate.Schemas {
+								db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", k))
+
+								migrator := migrate.NewMigrator(db, i, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
 								err := migrator.Down()
 								if err != nil {
 									return err
@@ -163,7 +168,9 @@ func main() {
 							return err
 						}
 
-						for _, schema := range config.Migrate.Schemas {
+						for k, schema := range config.Migrate.Schemas {
+							db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", k))
+
 							migrator := migrate.NewMigrator(db, source, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
 							err := migrator.Down()
 							if err != nil {
@@ -195,7 +202,7 @@ func main() {
 						return err
 					}
 
-					db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXIST %s", schema))
+					db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", schema))
 
 					migrator := migrate.NewMigrator(db, source, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
 
