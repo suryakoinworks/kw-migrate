@@ -2,6 +2,12 @@
 
 Manage postgresql cluster migration easly
 
+## Requirements
+
+- Go 1.17 or above
+
+- `pg_dump` (optional) to support reverse migration
+
 ## Features
 
 - Support multiple connections and schemas
