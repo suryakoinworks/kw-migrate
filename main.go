@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"koin-migrate/kw"
 	"koin-migrate/migrate"
@@ -30,8 +31,31 @@ func main() {
 				Aliases:     []string{"u"},
 				Description: "up",
 				Usage:       "Migration Up",
-				Action: func(*cli.Context) error {
-					return nil
+				Action: func(ctx *cli.Context) error {
+					if ctx.NArg() != 2 {
+						return errors.New("Not enough arguments. Usage: kw-migrate up <db> <schema>")
+					}
+
+					config := kw.Parse("Kwfile.yml")
+					source, ok := config.Migrate.Database[ctx.Args().Get(0)]
+					if !ok {
+						return errors.New(fmt.Sprintf("Config for '%s' not found", ctx.Args().Get(0)))
+					}
+
+					schema := ctx.Args().Get(1)
+					_, ok = config.Migrate.Schemas[schema]
+					if !ok {
+						return errors.New(fmt.Sprintf("Schema '%s' not found", schema))
+					}
+
+					db, err := kw.Connect(source)
+					if err != nil {
+						return err
+					}
+
+					migrator := migrate.NewMigrator(source.Driver, db, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
+
+					return migrator.Up()
 				},
 			},
 			{
@@ -40,7 +64,30 @@ func main() {
 				Description: "down",
 				Usage:       "Migration Down",
 				Action: func(ctx *cli.Context) error {
-					return nil
+					if ctx.NArg() != 2 {
+						return errors.New("Not enough arguments. Usage: kw-migrate down <db> <schema>")
+					}
+
+					config := kw.Parse("Kwfile.yml")
+					source, ok := config.Migrate.Database[ctx.Args().Get(0)]
+					if !ok {
+						return errors.New(fmt.Sprintf("Config for '%s' not found", ctx.Args().Get(0)))
+					}
+
+					schema := ctx.Args().Get(1)
+					_, ok = config.Migrate.Schemas[schema]
+					if !ok {
+						return errors.New(fmt.Sprintf("Schema '%s' not found", schema))
+					}
+
+					db, err := kw.Connect(source)
+					if err != nil {
+						return err
+					}
+
+					migrator := migrate.NewMigrator(source.Driver, db, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
+
+					return migrator.Down()
 				},
 			},
 			{
@@ -49,17 +96,46 @@ func main() {
 				Description: "create",
 				Usage:       "Create New Migration",
 				Action: func(ctx *cli.Context) error {
-					return nil
+					if ctx.NArg() != 2 {
+						return errors.New("Not enough arguments. Usage: kw-migrate create <schema> <name>")
+					}
+
+					config := kw.Parse("Kwfile.yml")
+
+					schema := ctx.Args().Get(0)
+					_, ok := config.Migrate.Schemas[schema]
+					if !ok {
+						return errors.New(fmt.Sprintf("Schema '%s' not found", schema))
+					}
+
+					os.MkdirAll(fmt.Sprintf("%s/%s", config.Migrate.Folder, schema), 0777)
+
+					version := time.Now().Unix()
+
+					name := ctx.Args().Get(1)
+					_, err := os.Create(fmt.Sprintf("%s/%s/%d_create_%s.up.sql", config.Migrate.Folder, schema, version, name))
+					if err != nil {
+						return err
+					}
+
+					_, err = os.Create(fmt.Sprintf("%s/%s/%d_create_%s.down.sql", config.Migrate.Folder, schema, version, name))
+
+					return err
 				},
 			},
 			{
-				Name:        "from-db",
-				Aliases:     []string{"f"},
-				Description: "from-db",
-				Usage:       "Create Migration from Existing Database",
+				Name:        "generate",
+				Aliases:     []string{"gen"},
+				Description: "generate",
+				Usage:       "Generate Migration from Existing Database",
 				Action: func(ctx *cli.Context) error {
 					config := kw.Parse("Kwfile.yml")
-					db, err := kw.Connect(config.Migrate.Database)
+					source, ok := config.Migrate.Database[config.Migrate.Source]
+					if !ok {
+						return errors.New(fmt.Sprintf("config for '%s' not found", config.Migrate.Source))
+					}
+
+					db, err := kw.Connect(source)
 					if err != nil {
 						return err
 					}
@@ -78,7 +154,7 @@ func main() {
 					progress.Suffix = " Generating migration files... "
 					progress.Start()
 
-					ddl := migrate.NewDdl(config.Migrate.PgDump, config.Migrate.Database)
+					ddl := migrate.NewDdl(config.Migrate.PgDump, source)
 					for k, v := range config.Migrate.Schemas {
 						schema := color.New(color.FgGreen).Sprint(k)
 
@@ -99,14 +175,16 @@ func main() {
 
 							upscript, downscript := ddl.Generate(fmt.Sprintf("%s.%s", k, t), schemaOnly)
 
-							err := os.WriteFile(fmt.Sprintf("%s/%d_%s.up.sql", config.Migrate.Folder, version, t), []byte(upscript), 0777)
+							os.MkdirAll(fmt.Sprintf("%s/%s", config.Migrate.Folder, k), 0777)
+
+							err := os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.up.sql", config.Migrate.Folder, k, version, t), []byte(upscript), 0777)
 							if err != nil {
 								progress.Stop()
 
 								return err
 							}
 
-							err = os.WriteFile(fmt.Sprintf("%s/%d_%s.down.sql", config.Migrate.Folder, version, t), []byte(downscript), 0777)
+							err = os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.down.sql", config.Migrate.Folder, k, version, t), []byte(downscript), 0777)
 							if err != nil {
 								progress.Stop()
 
@@ -117,15 +195,6 @@ func main() {
 
 					progress.Stop()
 
-					return nil
-				},
-			},
-			{
-				Name:        "init",
-				Aliases:     []string{"i"},
-				Description: "init",
-				Usage:       "Create Configuration File",
-				Action: func(ctx *cli.Context) error {
 					return nil
 				},
 			},

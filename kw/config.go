@@ -16,7 +16,8 @@ type (
 	Migrate struct {
 		PgDump   string                         `yaml:"pg_dump"`
 		Folder   string                         `yaml:"folder"`
-		Database Database                       `yaml:"database"`
+		Source   string                         `yaml:"source"`
+		Database map[string]Database            `yaml:"databases"`
 		Schemas  map[string]map[string][]string `yaml:"schemas"`
 	}
 
@@ -48,6 +49,10 @@ func Parse(path string) Config {
 
 	if config.Migrate.Folder == "" {
 		config.Migrate.Folder = "migrations"
+	}
+
+	if config.Migrate.Source == "" {
+		config.Migrate.Source = "default"
 	}
 
 	os.MkdirAll(config.Migrate.Folder, 0777)
