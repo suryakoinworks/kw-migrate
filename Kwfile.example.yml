@@ -4,9 +4,8 @@ migrate:
     pg_dump: /usr/bin/pg_dump
     folder: migrations
     source: default
-    databases:
+    connections:
         default:
-            driver: postgres
             host: localhost
             port: 5432
             name: asgard

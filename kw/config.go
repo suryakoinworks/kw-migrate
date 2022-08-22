@@ -14,15 +14,14 @@ type (
 	}
 
 	Migrate struct {
-		PgDump   string                         `yaml:"pg_dump"`
-		Folder   string                         `yaml:"folder"`
-		Source   string                         `yaml:"source"`
-		Database map[string]Database            `yaml:"databases"`
-		Schemas  map[string]map[string][]string `yaml:"schemas"`
+		PgDump      string                         `yaml:"pg_dump"`
+		Folder      string                         `yaml:"folder"`
+		Source      string                         `yaml:"source"`
+		Connections map[string]Connection          `yaml:"connections"`
+		Schemas     map[string]map[string][]string `yaml:"schemas"`
 	}
 
-	Database struct {
-		Driver   string `yaml:"driver"`
+	Connection struct {
 		Host     string `yaml:"host"`
 		Port     int    `yaml:"port"`
 		Name     string `yaml:"name"`

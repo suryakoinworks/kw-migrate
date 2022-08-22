@@ -18,11 +18,11 @@ type (
 
 	ddl struct {
 		command string
-		config  kw.Database
+		config  kw.Connection
 	}
 )
 
-func NewDdl(command string, config kw.Database) ddl {
+func NewDdl(command string, config kw.Connection) ddl {
 	return ddl{command: command, config: config}
 }
 
@@ -89,7 +89,7 @@ func (d ddl) downScript(line string) bool {
 }
 
 func (s schema) ListTables(excludes []string) []string {
-	query := fmt.Sprintf("SELECT table_name FROM information_schema.tables WHERE table_schema='%s' AND table_type='BASE TABLE' ORDER BY table_name;", s.name)
+	query := fmt.Sprintf("SELECT LOWER(table_name) as table_name FROM information_schema.tables WHERE table_schema='%s' AND table_type='BASE TABLE' ORDER BY table_name;", s.name)
 	rows, err := s.db.Query(query)
 	if err != nil {
 		fmt.Println(err.Error())
