@@ -30,7 +30,7 @@ func NewSchema(db *sql.DB, name string) schema {
 	return schema{db: db, name: name}
 }
 
-func (d ddl) Generate(table string, schemaOnly bool) (string, string, string) {
+func (d ddl) Generate(table string, schemaOnly bool) (string, string, string, string) {
 	options := []string{
 		"--no-comments",
 		"--no-publications",
@@ -63,6 +63,7 @@ func (d ddl) Generate(table string, schemaOnly bool) (string, string, string) {
 	var upScript []string
 	var downScript []string
 	var refereceScript []string
+	var foreignScript []string
 	var skip bool = false
 
 	result, _ := cli.CombinedOutput()
@@ -78,8 +79,13 @@ func (d ddl) Generate(table string, schemaOnly bool) (string, string, string) {
 			downScript = append(downScript, line)
 		} else {
 			if d.refereceScript(line, n, lines) {
-				refereceScript = append(refereceScript, line)
-				refereceScript = append(refereceScript, lines[n+1])
+				if d.foreignScript(line) {
+					foreignScript = append(foreignScript, line)
+					foreignScript = append(foreignScript, lines[n+1])
+				} else {
+					refereceScript = append(refereceScript, line)
+					refereceScript = append(refereceScript, lines[n+1])
+				}
 				skip = true
 			} else {
 				upScript = append(upScript, line)
@@ -87,7 +93,7 @@ func (d ddl) Generate(table string, schemaOnly bool) (string, string, string) {
 		}
 	}
 
-	return strings.Join(upScript, "\n"), strings.Join(downScript, "\n"), strings.Join(refereceScript, "\n")
+	return strings.Join(upScript, "\n"), strings.Join(downScript, "\n"), strings.Join(foreignScript, "\n"), strings.Join(refereceScript, "\n")
 }
 
 func (d ddl) skip(line string) bool {
@@ -96,6 +102,10 @@ func (d ddl) skip(line string) bool {
 
 func (d ddl) downScript(line string) bool {
 	return strings.Contains(line, "DROP")
+}
+
+func (d ddl) foreignScript(line string) bool {
+	return strings.Contains(line, "FOREIGN KEY")
 }
 
 func (d ddl) refereceScript(line string, n int, lines []string) bool {

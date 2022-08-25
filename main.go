@@ -7,6 +7,7 @@ import (
 	"koin-migrate/migrate"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -40,6 +41,10 @@ func main() {
 					config := kw.Parse("Kwfile.yml")
 					if ctx.Bool("all-connection") {
 						for i, source := range config.Migrate.Connections {
+							if config.Migrate.Source == i {
+								continue
+							}
+
 							db, err := kw.Connect(source)
 							if err != nil {
 								return err
@@ -133,6 +138,10 @@ func main() {
 					config := kw.Parse("Kwfile.yml")
 					if ctx.Bool("all-connection") {
 						for i, source := range config.Migrate.Connections {
+							if config.Migrate.Source == i {
+								continue
+							}
+
 							db, err := kw.Connect(source)
 							if err != nil {
 								return err
@@ -208,6 +217,43 @@ func main() {
 
 					return migrator.Down()
 				},
+			}, {
+
+				Name:        "fix",
+				Aliases:     []string{"f"},
+				Description: "fix <db> <schema> <version>",
+				Usage:       "Fix Migration Version",
+				Action: func(ctx *cli.Context) error {
+					config := kw.Parse("Kwfile.yml")
+					if ctx.NArg() != 3 {
+						return errors.New("Not enough arguments. Usage: kw-migrate down <db> <schema> <version>")
+					}
+
+					source := ctx.Args().Get(0)
+					dbConfig, ok := config.Migrate.Connections[source]
+					if !ok {
+						return errors.New(fmt.Sprintf("Config for '%s' not found", source))
+					}
+
+					schema := ctx.Args().Get(1)
+					_, ok = config.Migrate.Schemas[schema]
+					if !ok {
+						return errors.New(fmt.Sprintf("Schema '%s' not found", schema))
+					}
+
+					db, err := kw.Connect(dbConfig)
+					if err != nil {
+						return err
+					}
+
+					db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", schema))
+
+					migrator := migrate.NewMigrator(db, source, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
+
+					version, _ := strconv.ParseInt(ctx.Args().Get(2), 10, 0)
+
+					return migrator.Force(int(version))
+				},
 			},
 			{
 				Name:        "create",
@@ -275,9 +321,11 @@ func main() {
 					slen := len(config.Migrate.Schemas)
 					i := 1
 					referenceScripts := map[string][]string{}
+					foreignScripts := map[string][]string{}
 					for k, v := range config.Migrate.Schemas {
 						os.MkdirAll(fmt.Sprintf("%s/%s", config.Migrate.Folder, k), 0777)
 						referenceScripts[k] = []string{}
+						foreignScripts[k] = []string{}
 
 						schema := color.New(color.FgGreen).Sprint(k)
 						tlen := len(v["tables"])
@@ -296,8 +344,9 @@ func main() {
 								}
 							}
 
-							upscript, downscript, referenceScript := ddl.Generate(fmt.Sprintf("%s.%s", k, t), schemaOnly)
+							upscript, downscript, foreignScript, referenceScript := ddl.Generate(fmt.Sprintf("%s.%s", k, t), schemaOnly)
 							referenceScripts[k] = append(referenceScripts[k], referenceScript)
+							foreignScripts[k] = append(foreignScripts[k], foreignScript)
 
 							version := time.Now().Unix()
 							err := os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.up.sql", config.Migrate.Folder, k, version, t), []byte(upscript), 0777)
@@ -329,6 +378,23 @@ func main() {
 							time.Sleep(1 * time.Second)
 							version := time.Now().Unix()
 							err := os.WriteFile(fmt.Sprintf("%s/%s/%d_reference_%d.up.sql", config.Migrate.Folder, k, version, i), []byte(c), 0777)
+							if err != nil {
+								progress.Stop()
+
+								return err
+							}
+
+							time.Sleep(27 * time.Millisecond)
+						}
+
+					}
+
+					time.Sleep(3 * time.Second)
+					for k, s := range foreignScripts {
+						for i, c := range s {
+							time.Sleep(1 * time.Second)
+							version := time.Now().Unix()
+							err := os.WriteFile(fmt.Sprintf("%s/%s/%d_foregin_keys_%d.up.sql", config.Migrate.Folder, k, version, i), []byte(c), 0777)
 							if err != nil {
 								progress.Stop()
 
