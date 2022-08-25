@@ -320,6 +320,7 @@ func main() {
 					ddl := migrate.NewDdl(config.Migrate.PgDump, source)
 					slen := len(config.Migrate.Schemas)
 					i := 1
+					version := time.Now().Unix()
 					referenceScripts := map[string][]string{}
 					foreignScripts := map[string][]string{}
 					for k, v := range config.Migrate.Schemas {
@@ -348,7 +349,6 @@ func main() {
 							referenceScripts[k] = append(referenceScripts[k], referenceScript)
 							foreignScripts[k] = append(foreignScripts[k], foreignScript)
 
-							version := time.Now().Unix()
 							err := os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.up.sql", config.Migrate.Folder, k, version, t), []byte(upscript), 0777)
 							if err != nil {
 								progress.Stop()
@@ -362,6 +362,8 @@ func main() {
 
 								return err
 							}
+
+							version++
 						}
 
 						i++
@@ -372,11 +374,8 @@ func main() {
 					progress.Suffix = " Mapping references..."
 					progress.Start()
 
-					time.Sleep(3 * time.Second)
 					for k, s := range referenceScripts {
 						for i, c := range s {
-							time.Sleep(1 * time.Second)
-							version := time.Now().Unix()
 							err := os.WriteFile(fmt.Sprintf("%s/%s/%d_reference_%d.up.sql", config.Migrate.Folder, k, version, i), []byte(c), 0777)
 							if err != nil {
 								progress.Stop()
@@ -384,16 +383,13 @@ func main() {
 								return err
 							}
 
-							time.Sleep(27 * time.Millisecond)
+							version++
 						}
 
 					}
 
-					time.Sleep(3 * time.Second)
 					for k, s := range foreignScripts {
 						for i, c := range s {
-							time.Sleep(1 * time.Second)
-							version := time.Now().Unix()
 							err := os.WriteFile(fmt.Sprintf("%s/%s/%d_foregin_keys_%d.up.sql", config.Migrate.Folder, k, version, i), []byte(c), 0777)
 							if err != nil {
 								progress.Stop()
@@ -401,7 +397,7 @@ func main() {
 								return err
 							}
 
-							time.Sleep(27 * time.Millisecond)
+							version++
 						}
 
 					}
