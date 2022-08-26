@@ -7,6 +7,7 @@ import (
 	"koin-migrate/migrate"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -40,6 +41,10 @@ func main() {
 					config := kw.Parse("Kwfile.yml")
 					if ctx.Bool("all-connection") {
 						for i, source := range config.Migrate.Connections {
+							if config.Migrate.Source == i {
+								continue
+							}
+
 							db, err := kw.Connect(source)
 							if err != nil {
 								return err
@@ -48,11 +53,19 @@ func main() {
 							for k, schema := range config.Migrate.Schemas {
 								db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", k))
 
+								progress := spinner.New(spinner.CharSets[spinerIndex], duration)
+								progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", i, k)
+								progress.Start()
+
 								migrator := migrate.NewMigrator(db, i, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
 								err := migrator.Up()
 								if err != nil {
+									progress.Stop()
+
 									return err
 								}
+
+								progress.Stop()
 							}
 						}
 
@@ -78,11 +91,19 @@ func main() {
 						for k, schema := range config.Migrate.Schemas {
 							db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", k))
 
+							progress := spinner.New(spinner.CharSets[spinerIndex], duration)
+							progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", source, k)
+							progress.Start()
+
 							migrator := migrate.NewMigrator(db, source, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
 							err := migrator.Up()
 							if err != nil {
+								progress.Stop()
+
 								return err
 							}
+
+							progress.Stop()
 						}
 
 						return nil
@@ -117,7 +138,15 @@ func main() {
 
 					migrator := migrate.NewMigrator(db, source, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
 
-					return migrator.Up()
+					progress := spinner.New(spinner.CharSets[spinerIndex], duration)
+					progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", source, schema)
+					progress.Start()
+
+					err = migrator.Up()
+
+					progress.Stop()
+
+					return err
 				},
 			},
 			{
@@ -133,6 +162,10 @@ func main() {
 					config := kw.Parse("Kwfile.yml")
 					if ctx.Bool("all-connection") {
 						for i, source := range config.Migrate.Connections {
+							if config.Migrate.Source == i {
+								continue
+							}
+
 							db, err := kw.Connect(source)
 							if err != nil {
 								return err
@@ -141,11 +174,19 @@ func main() {
 							for k, schema := range config.Migrate.Schemas {
 								db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", k))
 
+								progress := spinner.New(spinner.CharSets[spinerIndex], duration)
+								progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", i, k)
+								progress.Start()
+
 								migrator := migrate.NewMigrator(db, i, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
 								err := migrator.Down()
 								if err != nil {
+									progress.Stop()
+
 									return err
 								}
+
+								progress.Stop()
 							}
 						}
 
@@ -171,11 +212,19 @@ func main() {
 						for k, schema := range config.Migrate.Schemas {
 							db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", k))
 
+							progress := spinner.New(spinner.CharSets[spinerIndex], duration)
+							progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", source, k)
+							progress.Start()
+
 							migrator := migrate.NewMigrator(db, source, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
 							err := migrator.Down()
 							if err != nil {
+								progress.Stop()
+
 								return err
 							}
+
+							progress.Stop()
 						}
 
 						return nil
@@ -206,7 +255,52 @@ func main() {
 
 					migrator := migrate.NewMigrator(db, source, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
 
-					return migrator.Down()
+					progress := spinner.New(spinner.CharSets[spinerIndex], duration)
+					progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", source, schema)
+					progress.Start()
+
+					err = migrator.Down()
+
+					progress.Stop()
+
+					return err
+				},
+			}, {
+
+				Name:        "fix",
+				Aliases:     []string{"f"},
+				Description: "fix <db> <schema> <version>",
+				Usage:       "Fix Migration Version",
+				Action: func(ctx *cli.Context) error {
+					config := kw.Parse("Kwfile.yml")
+					if ctx.NArg() != 3 {
+						return errors.New("Not enough arguments. Usage: kw-migrate down <db> <schema> <version>")
+					}
+
+					source := ctx.Args().Get(0)
+					dbConfig, ok := config.Migrate.Connections[source]
+					if !ok {
+						return errors.New(fmt.Sprintf("Config for '%s' not found", source))
+					}
+
+					schema := ctx.Args().Get(1)
+					_, ok = config.Migrate.Schemas[schema]
+					if !ok {
+						return errors.New(fmt.Sprintf("Schema '%s' not found", schema))
+					}
+
+					db, err := kw.Connect(dbConfig)
+					if err != nil {
+						return err
+					}
+
+					db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", schema))
+
+					migrator := migrate.NewMigrator(db, source, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
+
+					version, _ := strconv.ParseInt(ctx.Args().Get(2), 10, 0)
+
+					return migrator.Force(int(version))
 				},
 			},
 			{
@@ -259,6 +353,66 @@ func main() {
 						return err
 					}
 
+					if ctx.NArg() == 1 {
+						schema := ctx.Args().Get(0)
+						progress := spinner.New(spinner.CharSets[spinerIndex], duration)
+						progress.Suffix = " Listing tables from schemas... "
+						progress.Start()
+
+						_, ok := config.Migrate.Schemas[schema]
+						if !ok {
+							return errors.New("Schema not found")
+						}
+
+						config.Migrate.Schemas[schema]["tables"] = migrate.NewSchema(db, schema).ListTables(config.Migrate.Schemas[schema]["excludes"])
+
+						ddl := migrate.NewDdl(config.Migrate.PgDump, source)
+						version := time.Now().Unix()
+						referenceScripts := map[string][]string{}
+						foreignScripts := map[string][]string{}
+
+						os.MkdirAll(fmt.Sprintf("%s/%s", config.Migrate.Folder, schema), 0777)
+						referenceScripts[schema] = []string{}
+						foreignScripts[schema] = []string{}
+
+						tlen := len(config.Migrate.Schemas[schema]["tables"])
+						for j, t := range config.Migrate.Schemas[schema]["tables"] {
+							progress.Stop()
+							progress = spinner.New(spinner.CharSets[spinerIndex], duration)
+							progress.Suffix = fmt.Sprintf(" Processing table %s (%d/%d)... ", color.New(color.FgGreen).Sprint(t), (j + 1), tlen)
+							progress.Start()
+
+							schemaOnly := true
+							for _, d := range config.Migrate.Schemas[schema]["with_data"] {
+								if d == t {
+									schemaOnly = false
+
+									break
+								}
+							}
+
+							upscript, downscript, foreignScript, referenceScript := ddl.Generate(fmt.Sprintf("%s.%s", schema, t), schemaOnly)
+							referenceScripts[schema] = append(referenceScripts[schema], referenceScript)
+							foreignScripts[schema] = append(foreignScripts[schema], foreignScript)
+
+							err := os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.up.sql", config.Migrate.Folder, schema, version, t), []byte(upscript), 0777)
+							if err != nil {
+								progress.Stop()
+
+								return err
+							}
+
+							err = os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.down.sql", config.Migrate.Folder, schema, version, t), []byte(downscript), 0777)
+							if err != nil {
+								progress.Stop()
+
+								return err
+							}
+
+							version++
+						}
+					}
+
 					progress := spinner.New(spinner.CharSets[spinerIndex], duration)
 					progress.Suffix = " Listing tables from schemas... "
 					progress.Start()
@@ -274,8 +428,13 @@ func main() {
 					ddl := migrate.NewDdl(config.Migrate.PgDump, source)
 					slen := len(config.Migrate.Schemas)
 					i := 1
+					version := time.Now().Unix()
+					referenceScripts := map[string][]string{}
+					foreignScripts := map[string][]string{}
 					for k, v := range config.Migrate.Schemas {
 						os.MkdirAll(fmt.Sprintf("%s/%s", config.Migrate.Folder, k), 0777)
+						referenceScripts[k] = []string{}
+						foreignScripts[k] = []string{}
 
 						schema := color.New(color.FgGreen).Sprint(k)
 						tlen := len(v["tables"])
@@ -294,9 +453,10 @@ func main() {
 								}
 							}
 
-							upscript, downscript := ddl.Generate(fmt.Sprintf("%s.%s", k, t), schemaOnly)
+							upscript, downscript, foreignScript, referenceScript := ddl.Generate(fmt.Sprintf("%s.%s", k, t), schemaOnly)
+							referenceScripts[k] = append(referenceScripts[k], referenceScript)
+							foreignScripts[k] = append(foreignScripts[k], foreignScript)
 
-							version := time.Now().Unix()
 							err := os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.up.sql", config.Migrate.Folder, k, version, t), []byte(upscript), 0777)
 							if err != nil {
 								progress.Stop()
@@ -310,9 +470,44 @@ func main() {
 
 								return err
 							}
+
+							version++
 						}
 
 						i++
+					}
+
+					progress.Stop()
+					progress = spinner.New(spinner.CharSets[spinerIndex], duration)
+					progress.Suffix = " Mapping references..."
+					progress.Start()
+
+					for k, s := range referenceScripts {
+						for i, c := range s {
+							err := os.WriteFile(fmt.Sprintf("%s/%s/%d_reference_%d.up.sql", config.Migrate.Folder, k, version, i), []byte(c), 0777)
+							if err != nil {
+								progress.Stop()
+
+								return err
+							}
+
+							version++
+						}
+
+					}
+
+					for k, s := range foreignScripts {
+						for i, c := range s {
+							err := os.WriteFile(fmt.Sprintf("%s/%s/%d_foregin_keys_%d.up.sql", config.Migrate.Folder, k, version, i), []byte(c), 0777)
+							if err != nil {
+								progress.Stop()
+
+								return err
+							}
+
+							version++
+						}
+
 					}
 
 					progress.Stop()

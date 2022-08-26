@@ -16,26 +16,71 @@ Manage postgresql cluster migration easly
 
 ## Install
 
-- download latest release `https://github.com/suryakoinworks/kw-migrate/tags`
+- Download latest release `https://github.com/suryakoinworks/kw-migrate/tags`
 
-- extract source
+- Extract source
 
-- download dependencies `cd kw-migrate && go get && go mod tidy`
+- Download dependencies `cd kw-migrate && go get && go mod tidy`
 
-- build `go build -o kw-migrate`
+- Build `go build -o kw-migrate`
 
-- move to bin or add to environment variables
+- Move to bin or add to environment variables
 
-- check using `kw-migrate --help`
+- Check using `kw-migrate --help`
+
+## Commands available
+
+- `kw-migrate create <name>` to create new migration file
+
+- `kw-migrate up [--all-connection=true] [--all-schema=true] <db> <schema>` to deploy migration(s) to database and schema which you defined
+
+- `kw-migrate down [--all-connection=true] [--all-schema=true] <db> <schema>` to drop migration(s) to database and schema which you defined
+
+- `kw-migrate generate` to reverse migration from your `source` database 
+
+- `kw-migrate fix <version>` to fix dirty migration
 
 ## Usage
 
-- create `Kwfile.yml` see [example](https://github.com/suryakoinworks/kw-migrate/blob/main/Kwfile.example.yml)
+- Create new project folder
 
-- run `kw-migrate create <name>` to create new migration file
+- Copy Kwfile.yml below
 
-- run `kw-migrate up <db> <schema>` to deploy migration(s) to database and schema which you defined
+```yaml
+version: 1.0
 
-- run `kw-migrate down <db> <schema>` to drop migration(s) to database and schema which you defined
+migrate:
+    pg_dump: /usr/bin/pg_dump
+    folder: migrations
+    source: default
+    connections:
+        default:
+            host: default
+            port: 5432
+            name: database
+            user: user
+            password: s3cret
+        local:
+            host: localhost
+            port: 5432
+            name: database
+            user: user
+            password: s3cret
+    schemas:
+        public:
+            excludes:
+                - exclude_tables
+            with_data:
+                - data_included_tables
+        user:
+            excludes:
+                - exclude_tables
+            with_data:
+                - data_included_tables
+```
 
-- run `kw-migrate generate` to reverse migration from your `source` database 
+- Create new migration or generate from `source`
+
+## Limitation
+
+`kw-migrate generate` command run using `--schema-only` option as default (except when data included), so many of features like UDT, functions, etc may not imported by it self
