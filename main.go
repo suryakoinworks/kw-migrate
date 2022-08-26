@@ -50,14 +50,14 @@ func main() {
 								return err
 							}
 
-							for k, schema := range config.Migrate.Schemas {
+							for k := range config.Migrate.Schemas {
 								db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", k))
 
 								progress := spinner.New(spinner.CharSets[spinerIndex], duration)
 								progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", i, k)
 								progress.Start()
 
-								migrator := migrate.NewMigrator(db, i, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
+								migrator := migrate.NewMigrator(db, i, k, fmt.Sprintf("%s/%s", config.Migrate.Folder, k))
 								err := migrator.Up()
 								if err != nil {
 									progress.Stop()
@@ -88,14 +88,14 @@ func main() {
 							return err
 						}
 
-						for k, schema := range config.Migrate.Schemas {
+						for k := range config.Migrate.Schemas {
 							db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", k))
 
 							progress := spinner.New(spinner.CharSets[spinerIndex], duration)
 							progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", source, k)
 							progress.Start()
 
-							migrator := migrate.NewMigrator(db, source, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
+							migrator := migrate.NewMigrator(db, source, k, fmt.Sprintf("%s/%s", config.Migrate.Folder, k))
 							err := migrator.Up()
 							if err != nil {
 								progress.Stop()
@@ -136,7 +136,7 @@ func main() {
 						return err
 					}
 
-					migrator := migrate.NewMigrator(db, source, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
+					migrator := migrate.NewMigrator(db, source, schema, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
 
 					progress := spinner.New(spinner.CharSets[spinerIndex], duration)
 					progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", source, schema)
@@ -171,14 +171,14 @@ func main() {
 								return err
 							}
 
-							for k, schema := range config.Migrate.Schemas {
+							for k := range config.Migrate.Schemas {
 								db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", k))
 
 								progress := spinner.New(spinner.CharSets[spinerIndex], duration)
 								progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", i, k)
 								progress.Start()
 
-								migrator := migrate.NewMigrator(db, i, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
+								migrator := migrate.NewMigrator(db, i, k, fmt.Sprintf("%s/%s", config.Migrate.Folder, k))
 								err := migrator.Down()
 								if err != nil {
 									progress.Stop()
@@ -209,14 +209,14 @@ func main() {
 							return err
 						}
 
-						for k, schema := range config.Migrate.Schemas {
+						for k := range config.Migrate.Schemas {
 							db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", k))
 
 							progress := spinner.New(spinner.CharSets[spinerIndex], duration)
 							progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", source, k)
 							progress.Start()
 
-							migrator := migrate.NewMigrator(db, source, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
+							migrator := migrate.NewMigrator(db, source, k, fmt.Sprintf("%s/%s", config.Migrate.Folder, k))
 							err := migrator.Down()
 							if err != nil {
 								progress.Stop()
@@ -253,7 +253,7 @@ func main() {
 
 					db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", schema))
 
-					migrator := migrate.NewMigrator(db, source, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
+					migrator := migrate.NewMigrator(db, source, schema, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
 
 					progress := spinner.New(spinner.CharSets[spinerIndex], duration)
 					progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", source, schema)
@@ -296,7 +296,7 @@ func main() {
 
 					db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", schema))
 
-					migrator := migrate.NewMigrator(db, source, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
+					migrator := migrate.NewMigrator(db, source, schema, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
 
 					version, _ := strconv.ParseInt(ctx.Args().Get(2), 10, 0)
 
@@ -411,6 +411,43 @@ func main() {
 
 							version++
 						}
+
+						progress.Stop()
+						progress = spinner.New(spinner.CharSets[spinerIndex], duration)
+						progress.Suffix = " Mapping references..."
+						progress.Start()
+
+						for k, s := range referenceScripts {
+							for i, c := range s {
+								err := os.WriteFile(fmt.Sprintf("%s/%s/%d_reference_%d.up.sql", config.Migrate.Folder, k, version, i), []byte(c), 0777)
+								if err != nil {
+									progress.Stop()
+
+									return err
+								}
+
+								version++
+							}
+
+						}
+
+						for k, s := range foreignScripts {
+							for i, c := range s {
+								err := os.WriteFile(fmt.Sprintf("%s/%s/%d_foregin_keys_%d.up.sql", config.Migrate.Folder, k, version, i), []byte(c), 0777)
+								if err != nil {
+									progress.Stop()
+
+									return err
+								}
+
+								version++
+							}
+
+						}
+
+						progress.Stop()
+
+						return nil
 					}
 
 					progress := spinner.New(spinner.CharSets[spinerIndex], duration)
