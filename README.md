@@ -38,4 +38,4 @@ Manage postgresql cluster migration easly
 
 - run `kw-migrate down <db> <schema>` to drop migration(s) to database and schema which you defined
 
-- run `kw-migrate generate` to reverse migration from your `source` database 
+- run `kw-migrate generate <schema>` to reverse migration from your `source` database 
