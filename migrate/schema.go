@@ -79,7 +79,7 @@ func (d ddl) Generate(table string, schemaOnly bool) (string, string, string, st
 			downScript = append(downScript, line)
 		} else {
 			if d.refereceScript(line, n, lines) {
-				if d.foreignScript(line) {
+				if d.foreignScript(lines[n+1]) {
 					foreignScript = append(foreignScript, line)
 					foreignScript = append(foreignScript, lines[n+1])
 				} else {
