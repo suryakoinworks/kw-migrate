@@ -12,8 +12,8 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func NewMigrator(db *sql.DB, database, path string) *migrate.Migrate {
-	driver, err := postgres.WithInstance(db, &postgres.Config{})
+func NewMigrator(db *sql.DB, database, schema string, path string) *migrate.Migrate {
+	driver, err := postgres.WithInstance(db, &postgres.Config{SchemaName: schema})
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
