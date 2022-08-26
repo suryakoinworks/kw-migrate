@@ -353,6 +353,66 @@ func main() {
 						return err
 					}
 
+					if ctx.NArg() == 1 {
+						schema := ctx.Args().Get(0)
+						progress := spinner.New(spinner.CharSets[spinerIndex], duration)
+						progress.Suffix = " Listing tables from schemas... "
+						progress.Start()
+
+						_, ok := config.Migrate.Schemas[schema]
+						if !ok {
+							return errors.New("Schema not found")
+						}
+
+						config.Migrate.Schemas[schema]["tables"] = migrate.NewSchema(db, schema).ListTables(config.Migrate.Schemas[schema]["excludes"])
+
+						ddl := migrate.NewDdl(config.Migrate.PgDump, source)
+						version := time.Now().Unix()
+						referenceScripts := map[string][]string{}
+						foreignScripts := map[string][]string{}
+
+						os.MkdirAll(fmt.Sprintf("%s/%s", config.Migrate.Folder, schema), 0777)
+						referenceScripts[schema] = []string{}
+						foreignScripts[schema] = []string{}
+
+						tlen := len(config.Migrate.Schemas[schema]["tables"])
+						for j, t := range config.Migrate.Schemas[schema]["tables"] {
+							progress.Stop()
+							progress = spinner.New(spinner.CharSets[spinerIndex], duration)
+							progress.Suffix = fmt.Sprintf(" Processing table %s (%d/%d)... ", color.New(color.FgGreen).Sprint(t), (j + 1), tlen)
+							progress.Start()
+
+							schemaOnly := true
+							for _, d := range config.Migrate.Schemas[schema]["with_data"] {
+								if d == t {
+									schemaOnly = false
+
+									break
+								}
+							}
+
+							upscript, downscript, foreignScript, referenceScript := ddl.Generate(fmt.Sprintf("%s.%s", schema, t), schemaOnly)
+							referenceScripts[schema] = append(referenceScripts[schema], referenceScript)
+							foreignScripts[schema] = append(foreignScripts[schema], foreignScript)
+
+							err := os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.up.sql", config.Migrate.Folder, schema, version, t), []byte(upscript), 0777)
+							if err != nil {
+								progress.Stop()
+
+								return err
+							}
+
+							err = os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.down.sql", config.Migrate.Folder, schema, version, t), []byte(downscript), 0777)
+							if err != nil {
+								progress.Stop()
+
+								return err
+							}
+
+							version++
+						}
+					}
+
 					progress := spinner.New(spinner.CharSets[spinerIndex], duration)
 					progress.Suffix = " Listing tables from schemas... "
 					progress.Start()
