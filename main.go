@@ -51,7 +51,10 @@ func main() {
 							}
 
 							for k := range config.Migrate.Schemas {
-								db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", k))
+								_, err = db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", k))
+								if err != nil {
+									return err
+								}
 
 								progress := spinner.New(spinner.CharSets[spinerIndex], duration)
 								progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", i, k)
@@ -60,6 +63,15 @@ func main() {
 								migrator := migrate.NewMigrator(db, i, k, fmt.Sprintf("%s/%s", config.Migrate.Folder, k))
 								err := migrator.Up()
 								if err != nil {
+									version, dirty, _ := migrator.Version()
+									if version != 0 {
+										if dirty {
+											migrator.Force(int(version))
+										}
+
+										migrator.Steps(-1)
+									}
+
 									progress.Stop()
 
 									return err
@@ -89,7 +101,10 @@ func main() {
 						}
 
 						for k := range config.Migrate.Schemas {
-							db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", k))
+							_, err = db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", k))
+							if err != nil {
+								return err
+							}
 
 							progress := spinner.New(spinner.CharSets[spinerIndex], duration)
 							progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", source, k)
@@ -98,6 +113,15 @@ func main() {
 							migrator := migrate.NewMigrator(db, source, k, fmt.Sprintf("%s/%s", config.Migrate.Folder, k))
 							err := migrator.Up()
 							if err != nil {
+								version, dirty, _ := migrator.Version()
+								if version != 0 {
+									if dirty {
+										migrator.Force(int(version))
+									}
+
+									migrator.Steps(-1)
+								}
+
 								progress.Stop()
 
 								return err
@@ -120,15 +144,58 @@ func main() {
 						return errors.New(fmt.Sprintf("Config for '%s' not found", source))
 					}
 
+					db, err := kw.Connect(dbConfig)
+					if err != nil {
+						return err
+					}
+
+					if ctx.Args().Get(1) == "init" {
+						progress := spinner.New(spinner.CharSets[spinerIndex], duration)
+						progress.Suffix = "Run init scripts"
+						progress.Start()
+
+						for k := range config.Migrate.Schemas {
+							_, err = db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", k))
+							if err != nil {
+								progress.Stop()
+
+								return err
+							}
+						}
+
+						dir := fmt.Sprintf("%s/init", config.Migrate.Folder)
+						files, err := os.ReadDir(dir)
+						if err != nil {
+							progress.Stop()
+
+							return err
+						}
+
+						for _, file := range files {
+							sql, err := os.ReadFile(fmt.Sprintf("%s/%s", dir, file.Name()))
+							if err != nil {
+								progress.Stop()
+
+								return err
+							}
+
+							_, err = db.Exec(string(sql))
+							if err != nil {
+								progress.Stop()
+
+								return err
+							}
+						}
+
+						progress.Stop()
+
+						return nil
+					}
+
 					schema := ctx.Args().Get(1)
 					_, ok = config.Migrate.Schemas[schema]
 					if !ok {
 						return errors.New(fmt.Sprintf("Schema '%s' not found", schema))
-					}
-
-					db, err := kw.Connect(dbConfig)
-					if err != nil {
-						return err
 					}
 
 					_, err = db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", schema))
@@ -143,10 +210,58 @@ func main() {
 					progress.Start()
 
 					err = migrator.Up()
+					if err != nil {
+						version, dirty, _ := migrator.Version()
+						if version != 0 {
+							if dirty {
+								migrator.Force(int(version))
+							}
+
+							migrator.Steps(-1)
+						}
+					}
 
 					progress.Stop()
 
 					return err
+				},
+			},
+			{
+				Name:        "rollback",
+				Aliases:     []string{"r"},
+				Description: "rollback <db> <schema> <step>",
+				Usage:       "Migration Rollback",
+				Action: func(ctx *cli.Context) error {
+					config := kw.Parse("Kwfile.yml")
+					if ctx.NArg() != 3 {
+						return errors.New("Not enough arguments. Usage: kw-migrate rollback <db> <schema> <step>")
+					}
+
+					source := ctx.Args().Get(0)
+					dbConfig, ok := config.Migrate.Connections[source]
+					if !ok {
+						return errors.New(fmt.Sprintf("Config for '%s' not found", source))
+					}
+
+					schema := ctx.Args().Get(1)
+					_, ok = config.Migrate.Schemas[schema]
+					if !ok {
+						return errors.New(fmt.Sprintf("Schema '%s' not found", schema))
+					}
+
+					db, err := kw.Connect(dbConfig)
+					if err != nil {
+						return err
+					}
+
+					n, err := strconv.ParseInt(ctx.Args().Get(2), 10, 0)
+					if err != nil || n >= 0 {
+						return errors.New("Invalid step")
+					}
+
+					migrator := migrate.NewMigrator(db, source, schema, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
+
+					return migrator.Steps(int(n))
 				},
 			},
 			{
@@ -172,10 +287,8 @@ func main() {
 							}
 
 							for k := range config.Migrate.Schemas {
-								db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", k))
-
 								progress := spinner.New(spinner.CharSets[spinerIndex], duration)
-								progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", i, k)
+								progress.Suffix = fmt.Sprintf(" Tear down migrations for %s on %s schema", i, k)
 								progress.Start()
 
 								migrator := migrate.NewMigrator(db, i, k, fmt.Sprintf("%s/%s", config.Migrate.Folder, k))
@@ -210,10 +323,8 @@ func main() {
 						}
 
 						for k := range config.Migrate.Schemas {
-							db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", k))
-
 							progress := spinner.New(spinner.CharSets[spinerIndex], duration)
-							progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", source, k)
+							progress.Suffix = fmt.Sprintf(" Tear down migrations for %s on %s schema", source, k)
 							progress.Start()
 
 							migrator := migrate.NewMigrator(db, source, k, fmt.Sprintf("%s/%s", config.Migrate.Folder, k))
@@ -251,12 +362,10 @@ func main() {
 						return err
 					}
 
-					db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", schema))
-
 					migrator := migrate.NewMigrator(db, source, schema, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
 
 					progress := spinner.New(spinner.CharSets[spinerIndex], duration)
-					progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", source, schema)
+					progress.Suffix = fmt.Sprintf(" Tear down migrations for %s on %s schema", source, schema)
 					progress.Start()
 
 					err = migrator.Down()
@@ -264,43 +373,6 @@ func main() {
 					progress.Stop()
 
 					return err
-				},
-			}, {
-
-				Name:        "fix",
-				Aliases:     []string{"f"},
-				Description: "fix <db> <schema> <version>",
-				Usage:       "Fix Migration Version",
-				Action: func(ctx *cli.Context) error {
-					config := kw.Parse("Kwfile.yml")
-					if ctx.NArg() != 3 {
-						return errors.New("Not enough arguments. Usage: kw-migrate down <db> <schema> <version>")
-					}
-
-					source := ctx.Args().Get(0)
-					dbConfig, ok := config.Migrate.Connections[source]
-					if !ok {
-						return errors.New(fmt.Sprintf("Config for '%s' not found", source))
-					}
-
-					schema := ctx.Args().Get(1)
-					_, ok = config.Migrate.Schemas[schema]
-					if !ok {
-						return errors.New(fmt.Sprintf("Schema '%s' not found", schema))
-					}
-
-					db, err := kw.Connect(dbConfig)
-					if err != nil {
-						return err
-					}
-
-					db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", schema))
-
-					migrator := migrate.NewMigrator(db, source, schema, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
-
-					version, _ := strconv.ParseInt(ctx.Args().Get(2), 10, 0)
-
-					return migrator.Force(int(version))
 				},
 			},
 			{

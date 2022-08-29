@@ -32,13 +32,13 @@ Manage postgresql cluster migration easly
 
 - `kw-migrate create <name>` to create new migration file
 
-- `kw-migrate up [--all-connection=true] [--all-schema=true] <db> <schema>` to deploy migration(s) to database and schema which you defined
+- `kw-migrate up [--all-connection=true] [--all-schema=true] <db> <schema>` to deploy migration(s) from database and schema which you provide
 
-- `kw-migrate down [--all-connection=true] [--all-schema=true] <db> <schema>` to drop migration(s) to database and schema which you defined
+- `kw-migrate down [--all-connection=true] [--all-schema=true] <db> <schema>` to drop migration(s) from database and schema which you provide
 
-- `kw-migrate generate` to reverse migration from your `source` database 
+- `kw-migrate generate <schema>` to reverse migration from your `source` database 
 
-- `kw-migrate fix <version>` to fix dirty migration
+- `kw-migrate rollback <db> <schema> <step>` to rollback migration version from database and schema which you provide
 
 ## Usage
 
