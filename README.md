@@ -85,4 +85,4 @@ migrate:
 
 ## Limitation
 
-- `kw-migrate generate` command run using `--schema-only` option as default (except when data included), so many of features like UDT, functions, etc may not imported by it self
+- `kw-migrate generate` command run use `--schema-only` option as default (except when data included), so many of features like UDT, functions, etc may not imported by it self
