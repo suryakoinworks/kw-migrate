@@ -88,14 +88,11 @@ func (d ddl) Generate(table string, schemaOnly bool) Script {
 
 		if d.downScript(line) {
 			if d.downReferenceScript(line) {
-				if d.downForeignkey(lines[n+1]) {
+				if d.downForeignkey(line) {
 					downForeignScript = append(downForeignScript, line)
-					downForeignScript = append(downForeignScript, lines[n+1])
 				} else {
 					downReferenceScript = append(downReferenceScript, line)
-					downReferenceScript = append(downReferenceScript, lines[n+1])
 				}
-				skip = true
 			} else {
 				downScript = append(downScript, line)
 			}
@@ -134,15 +131,15 @@ func (d ddl) downScript(line string) bool {
 }
 
 func (d ddl) downReferenceScript(line string) bool {
-	return strings.HasSuffix(line, "pkey;") || strings.HasSuffix(line, "fkey;")
+	return strings.Contains(line, "pkey;") || strings.Contains(line, "fkey;")
 }
 
 func (d ddl) downRerefence(line string) bool {
-	return strings.HasSuffix(line, "pkey;")
+	return strings.Contains(line, "pkey;")
 }
 
 func (d ddl) downForeignkey(line string) bool {
-	return strings.HasSuffix(line, "fkey;")
+	return strings.Contains(line, "fkey;")
 }
 
 func (d ddl) foreignScript(line string) bool {
