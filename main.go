@@ -276,8 +276,11 @@ func main() {
 						if err != gomigrate.ErrNoChange {
 							version, dirty, _ := migrator.Version()
 							if version != 0 && dirty {
+								fmt.Println("HE")
 								migrator.Force(int(version))
-								migrator.Steps(-1)
+								err := migrator.Steps(-1)
+
+								fmt.Println(err)
 							}
 						}
 					}
@@ -565,12 +568,8 @@ func main() {
 
 						ddl := migrate.NewDdl(config.Migrate.PgDump, source)
 						version := time.Now().Unix()
-						referenceScripts := map[string][]string{}
-						foreignScripts := map[string][]string{}
 
 						os.MkdirAll(fmt.Sprintf("%s/%s", config.Migrate.Folder, schema), 0777)
-						referenceScripts[schema] = []string{}
-						foreignScripts[schema] = []string{}
 
 						tlen := len(config.Migrate.Schemas[schema]["tables"])
 						for j, t := range config.Migrate.Schemas[schema]["tables"] {
@@ -588,18 +587,16 @@ func main() {
 								}
 							}
 
-							upscript, downscript, foreignScript, referenceScript := ddl.Generate(fmt.Sprintf("%s.%s", schema, t), schemaOnly)
-							referenceScripts[schema] = append(referenceScripts[schema], referenceScript)
-							foreignScripts[schema] = append(foreignScripts[schema], foreignScript)
+							script := ddl.Generate(fmt.Sprintf("%s.%s", schema, t), schemaOnly)
 
-							err := os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.up.sql", config.Migrate.Folder, schema, version, t), []byte(upscript), 0777)
+							err := os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.up.sql", config.Migrate.Folder, schema, version, t), []byte(script.UpScript), 0777)
 							if err != nil {
 								progress.Stop()
 
 								return err
 							}
 
-							err = os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.down.sql", config.Migrate.Folder, schema, version, t), []byte(downscript), 0777)
+							err = os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.down.sql", config.Migrate.Folder, schema, version, t), []byte(script.DownScript), 0777)
 							if err != nil {
 								progress.Stop()
 
@@ -607,39 +604,36 @@ func main() {
 							}
 
 							version++
-						}
 
-						progress.Stop()
-						progress = spinner.New(spinner.CharSets[spinerIndex], duration)
-						progress.Suffix = " Mapping references..."
-						progress.Start()
+							err = os.WriteFile(fmt.Sprintf("%s/%s/%d_primary_key_%s.up.sql", config.Migrate.Folder, schema, version, t), []byte(script.UpReferenceScript), 0777)
+							if err != nil {
+								progress.Stop()
 
-						for k, s := range referenceScripts {
-							for i, c := range s {
-								err := os.WriteFile(fmt.Sprintf("%s/%s/%d_reference_%d.up.sql", config.Migrate.Folder, k, version, i), []byte(c), 0777)
-								if err != nil {
-									progress.Stop()
-
-									return err
-								}
-
-								version++
+								return err
 							}
 
-						}
+							err = os.WriteFile(fmt.Sprintf("%s/%s/%d_primary_key_%s.down.sql", config.Migrate.Folder, schema, version, t), []byte(script.DownReferenceScript), 0777)
+							if err != nil {
+								progress.Stop()
 
-						for k, s := range foreignScripts {
-							for i, c := range s {
-								err := os.WriteFile(fmt.Sprintf("%s/%s/%d_foregin_keys_%d.up.sql", config.Migrate.Folder, k, version, i), []byte(c), 0777)
-								if err != nil {
-									progress.Stop()
-
-									return err
-								}
-
-								version++
+								return err
 							}
 
+							version++
+
+							err = os.WriteFile(fmt.Sprintf("%s/%s/%d_foreign_keys_%s.up.sql", config.Migrate.Folder, schema, version, t), []byte(script.UpForeignScript), 0777)
+							if err != nil {
+								progress.Stop()
+
+								return err
+							}
+
+							err = os.WriteFile(fmt.Sprintf("%s/%s/%d_foreign_keys_%s.down.sql", config.Migrate.Folder, schema, version, t), []byte(script.DownForeignScript), 0777)
+							if err != nil {
+								progress.Stop()
+
+								return err
+							}
 						}
 
 						progress.Stop()
@@ -663,12 +657,8 @@ func main() {
 					slen := len(config.Migrate.Schemas)
 					i := 1
 					version := time.Now().Unix()
-					referenceScripts := map[string][]string{}
-					foreignScripts := map[string][]string{}
 					for k, v := range config.Migrate.Schemas {
 						os.MkdirAll(fmt.Sprintf("%s/%s", config.Migrate.Folder, k), 0777)
-						referenceScripts[k] = []string{}
-						foreignScripts[k] = []string{}
 
 						schema := color.New(color.FgGreen).Sprint(k)
 						tlen := len(v["tables"])
@@ -687,18 +677,16 @@ func main() {
 								}
 							}
 
-							upscript, downscript, foreignScript, referenceScript := ddl.Generate(fmt.Sprintf("%s.%s", k, t), schemaOnly)
-							referenceScripts[k] = append(referenceScripts[k], referenceScript)
-							foreignScripts[k] = append(foreignScripts[k], foreignScript)
+							script := ddl.Generate(fmt.Sprintf("%s.%s", schema, t), schemaOnly)
 
-							err := os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.up.sql", config.Migrate.Folder, k, version, t), []byte(upscript), 0777)
+							err := os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.up.sql", config.Migrate.Folder, k, version, t), []byte(script.UpScript), 0777)
 							if err != nil {
 								progress.Stop()
 
 								return err
 							}
 
-							err = os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.down.sql", config.Migrate.Folder, k, version, t), []byte(downscript), 0777)
+							err = os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.down.sql", config.Migrate.Folder, k, version, t), []byte(script.DownScript), 0777)
 							if err != nil {
 								progress.Stop()
 
@@ -706,42 +694,39 @@ func main() {
 							}
 
 							version++
+
+							err = os.WriteFile(fmt.Sprintf("%s/%s/%d_primary_key_%s.up.sql", config.Migrate.Folder, k, version, t), []byte(script.UpReferenceScript), 0777)
+							if err != nil {
+								progress.Stop()
+
+								return err
+							}
+
+							err = os.WriteFile(fmt.Sprintf("%s/%s/%d_primary_key_%s.down.sql", config.Migrate.Folder, k, version, t), []byte(script.DownReferenceScript), 0777)
+							if err != nil {
+								progress.Stop()
+
+								return err
+							}
+
+							version++
+
+							err = os.WriteFile(fmt.Sprintf("%s/%s/%d_foreign_keys_%s.up.sql", config.Migrate.Folder, k, version, t), []byte(script.UpForeignScript), 0777)
+							if err != nil {
+								progress.Stop()
+
+								return err
+							}
+
+							err = os.WriteFile(fmt.Sprintf("%s/%s/%d_foreign_keys_%s.down.sql", config.Migrate.Folder, k, version, t), []byte(script.DownForeignScript), 0777)
+							if err != nil {
+								progress.Stop()
+
+								return err
+							}
 						}
 
 						i++
-					}
-
-					progress.Stop()
-					progress = spinner.New(spinner.CharSets[spinerIndex], duration)
-					progress.Suffix = " Mapping references..."
-					progress.Start()
-
-					for k, s := range referenceScripts {
-						for i, c := range s {
-							err := os.WriteFile(fmt.Sprintf("%s/%s/%d_reference_%d.up.sql", config.Migrate.Folder, k, version, i), []byte(c), 0777)
-							if err != nil {
-								progress.Stop()
-
-								return err
-							}
-
-							version++
-						}
-
-					}
-
-					for k, s := range foreignScripts {
-						for i, c := range s {
-							err := os.WriteFile(fmt.Sprintf("%s/%s/%d_foregin_keys_%d.up.sql", config.Migrate.Folder, k, version, i), []byte(c), 0777)
-							if err != nil {
-								progress.Stop()
-
-								return err
-							}
-
-							version++
-						}
-
 					}
 
 					progress.Stop()

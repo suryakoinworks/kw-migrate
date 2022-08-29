@@ -11,6 +11,15 @@ import (
 )
 
 type (
+	Script struct {
+		UpScript            string
+		UpReferenceScript   string
+		UpForeignScript     string
+		DownScript          string
+		DownReferenceScript string
+		DownForeignScript   string
+	}
+
 	schema struct {
 		db   *sql.DB
 		name string
@@ -30,7 +39,7 @@ func NewSchema(db *sql.DB, name string) schema {
 	return schema{db: db, name: name}
 }
 
-func (d ddl) Generate(table string, schemaOnly bool) (string, string, string, string) {
+func (d ddl) Generate(table string, schemaOnly bool) Script {
 	options := []string{
 		"--no-comments",
 		"--no-publications",
@@ -62,8 +71,10 @@ func (d ddl) Generate(table string, schemaOnly bool) (string, string, string, st
 
 	var upScript []string
 	var downScript []string
-	var refereceScript []string
-	var foreignScript []string
+	var upReferenceScript []string
+	var downReferenceScript []string
+	var upForeignScript []string
+	var downForeignScript []string
 	var skip bool = false
 
 	result, _ := cli.CombinedOutput()
@@ -76,15 +87,26 @@ func (d ddl) Generate(table string, schemaOnly bool) (string, string, string, st
 		}
 
 		if d.downScript(line) {
-			downScript = append(downScript, line)
+			if d.downReferenceScript(line) {
+				if d.downForeignkey(lines[n+1]) {
+					downForeignScript = append(downForeignScript, line)
+					downForeignScript = append(downForeignScript, lines[n+1])
+				} else {
+					downReferenceScript = append(downReferenceScript, line)
+					downReferenceScript = append(downReferenceScript, lines[n+1])
+				}
+				skip = true
+			} else {
+				downScript = append(downScript, line)
+			}
 		} else {
 			if d.refereceScript(line, n, lines) {
 				if d.foreignScript(lines[n+1]) {
-					foreignScript = append(foreignScript, line)
-					foreignScript = append(foreignScript, lines[n+1])
+					upForeignScript = append(upForeignScript, line)
+					upForeignScript = append(upForeignScript, lines[n+1])
 				} else {
-					refereceScript = append(refereceScript, line)
-					refereceScript = append(refereceScript, lines[n+1])
+					upReferenceScript = append(upReferenceScript, line)
+					upReferenceScript = append(upReferenceScript, lines[n+1])
 				}
 				skip = true
 			} else {
@@ -93,7 +115,14 @@ func (d ddl) Generate(table string, schemaOnly bool) (string, string, string, st
 		}
 	}
 
-	return strings.Join(upScript, "\n"), strings.Join(downScript, "\n"), strings.Join(foreignScript, "\n"), strings.Join(refereceScript, "\n")
+	return Script{
+		UpScript:            strings.Join(upScript, "\n"),
+		UpReferenceScript:   strings.Join(upReferenceScript, "\n"),
+		UpForeignScript:     strings.Join(upForeignScript, "\n"),
+		DownScript:          strings.Join(downScript, "\n"),
+		DownReferenceScript: strings.Join(downReferenceScript, "\n"),
+		DownForeignScript:   strings.Join(downForeignScript, "\n"),
+	}
 }
 
 func (d ddl) skip(line string) bool {
@@ -102,6 +131,18 @@ func (d ddl) skip(line string) bool {
 
 func (d ddl) downScript(line string) bool {
 	return strings.Contains(line, "DROP")
+}
+
+func (d ddl) downReferenceScript(line string) bool {
+	return strings.HasSuffix(line, "pkey;") || strings.HasSuffix(line, "fkey;")
+}
+
+func (d ddl) downRerefence(line string) bool {
+	return strings.HasSuffix(line, "pkey;")
+}
+
+func (d ddl) downForeignkey(line string) bool {
+	return strings.HasSuffix(line, "fkey;")
 }
 
 func (d ddl) foreignScript(line string) bool {
