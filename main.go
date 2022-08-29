@@ -12,6 +12,7 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/fatih/color"
+	gomigrate "github.com/golang-migrate/migrate/v4"
 	"github.com/urfave/cli/v2"
 )
 
@@ -29,11 +30,74 @@ func main() {
 		UseShortOptionHandling: true,
 		Commands: []*cli.Command{
 			{
+				Name:        "sync",
+				Description: "sync <cluster> <schema>",
+				Usage:       "Cluster Sync",
+				Action: func(ctx *cli.Context) error {
+					if ctx.NArg() != 2 {
+						return errors.New("Not enough arguments. Usage: kw-migrate sync <cluster> <schema>")
+					}
+
+					config := kw.Parse("Kwfile.yml")
+					cluster := ctx.Args().Get(0)
+					lists, ok := config.Migrate.Cluster[cluster]
+					if !ok {
+						return errors.New(fmt.Sprintf("Cluster '%s' isn't defined", cluster))
+					}
+
+					connections := map[string]kw.Connection{}
+					for _, c := range lists {
+						if config.Migrate.Source == c {
+							continue
+						}
+
+						if _, ok := config.Migrate.Connections[c]; !ok {
+							return errors.New(fmt.Sprintf("Connection '%s' isn't defined", c))
+						}
+
+						connections[c] = config.Migrate.Connections[c]
+					}
+
+					schema := ctx.Args().Get(1)
+					for i, source := range connections {
+						db, err := kw.Connect(source)
+						if err != nil {
+							return err
+						}
+
+						migrator := migrate.NewMigrator(db, source.Name, schema, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
+
+						progress := spinner.New(spinner.CharSets[spinerIndex], duration)
+						progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", i, schema)
+						progress.Start()
+
+						err = migrator.Up()
+						if err != nil {
+							if err != gomigrate.ErrNoChange {
+								version, dirty, _ := migrator.Version()
+								if version != 0 && dirty {
+									migrator.Force(int(version))
+									migrator.Steps(-1)
+								}
+							}
+
+							progress.Stop()
+
+							return err
+						}
+
+						progress.Stop()
+					}
+
+					return nil
+				},
+			},
+			{
 				Name:        "up",
 				Aliases:     []string{"u"},
 				Description: "up [<db>] [<schema>] [--all-connection] [--all-schema]",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "all-connection", Aliases: []string{"ac"}},
+					&cli.BoolFlag{Name: "all-connection", Aliases: []string{"ac"}},
 					&cli.BoolFlag{Name: "all-schema", Aliases: []string{"as"}},
 				},
 				Usage: "Migration Up",
@@ -60,16 +124,15 @@ func main() {
 								progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", i, k)
 								progress.Start()
 
-								migrator := migrate.NewMigrator(db, i, k, fmt.Sprintf("%s/%s", config.Migrate.Folder, k))
+								migrator := migrate.NewMigrator(db, source.Name, k, fmt.Sprintf("%s/%s", config.Migrate.Folder, k))
 								err := migrator.Up()
 								if err != nil {
-									version, dirty, _ := migrator.Version()
-									if version != 0 {
-										if dirty {
+									if err != gomigrate.ErrNoChange {
+										version, dirty, _ := migrator.Version()
+										if version != 0 && dirty {
 											migrator.Force(int(version))
+											migrator.Steps(-1)
 										}
-
-										migrator.Steps(-1)
 									}
 
 									progress.Stop()
@@ -110,16 +173,15 @@ func main() {
 							progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", source, k)
 							progress.Start()
 
-							migrator := migrate.NewMigrator(db, source, k, fmt.Sprintf("%s/%s", config.Migrate.Folder, k))
+							migrator := migrate.NewMigrator(db, dbConfig.Name, k, fmt.Sprintf("%s/%s", config.Migrate.Folder, k))
 							err := migrator.Up()
 							if err != nil {
-								version, dirty, _ := migrator.Version()
-								if version != 0 {
-									if dirty {
+								if err != gomigrate.ErrNoChange {
+									version, dirty, _ := migrator.Version()
+									if version != 0 && dirty {
 										migrator.Force(int(version))
+										migrator.Steps(-1)
 									}
-
-									migrator.Steps(-1)
 								}
 
 								progress.Stop()
@@ -203,7 +265,7 @@ func main() {
 						return err
 					}
 
-					migrator := migrate.NewMigrator(db, source, schema, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
+					migrator := migrate.NewMigrator(db, dbConfig.Name, schema, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
 
 					progress := spinner.New(spinner.CharSets[spinerIndex], duration)
 					progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", source, schema)
@@ -211,13 +273,12 @@ func main() {
 
 					err = migrator.Up()
 					if err != nil {
-						version, dirty, _ := migrator.Version()
-						if version != 0 {
-							if dirty {
+						if err != gomigrate.ErrNoChange {
+							version, dirty, _ := migrator.Version()
+							if version != 0 && dirty {
 								migrator.Force(int(version))
+								migrator.Steps(-1)
 							}
-
-							migrator.Steps(-1)
 						}
 					}
 
@@ -259,7 +320,45 @@ func main() {
 						return errors.New("Invalid step")
 					}
 
-					migrator := migrate.NewMigrator(db, source, schema, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
+					migrator := migrate.NewMigrator(db, dbConfig.Name, schema, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
+
+					return migrator.Steps(int(n))
+				},
+			},
+			{
+				Name:        "run",
+				Aliases:     []string{"s"},
+				Description: "run <db> <schema> <step>",
+				Usage:       "Run Migration",
+				Action: func(ctx *cli.Context) error {
+					config := kw.Parse("Kwfile.yml")
+					if ctx.NArg() != 3 {
+						return errors.New("Not enough arguments. Usage: kw-migrate run <db> <schema> <step>")
+					}
+
+					source := ctx.Args().Get(0)
+					dbConfig, ok := config.Migrate.Connections[source]
+					if !ok {
+						return errors.New(fmt.Sprintf("Config for '%s' not found", source))
+					}
+
+					schema := ctx.Args().Get(1)
+					_, ok = config.Migrate.Schemas[schema]
+					if !ok {
+						return errors.New(fmt.Sprintf("Schema '%s' not found", schema))
+					}
+
+					db, err := kw.Connect(dbConfig)
+					if err != nil {
+						return err
+					}
+
+					n, err := strconv.ParseInt(ctx.Args().Get(2), 10, 0)
+					if err != nil || n <= 0 {
+						return errors.New("Invalid step")
+					}
+
+					migrator := migrate.NewMigrator(db, dbConfig.Name, schema, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
 
 					return migrator.Steps(int(n))
 				},
@@ -291,9 +390,18 @@ func main() {
 								progress.Suffix = fmt.Sprintf(" Tear down migrations for %s on %s schema", i, k)
 								progress.Start()
 
-								migrator := migrate.NewMigrator(db, i, k, fmt.Sprintf("%s/%s", config.Migrate.Folder, k))
+								migrator := migrate.NewMigrator(db, source.Name, k, fmt.Sprintf("%s/%s", config.Migrate.Folder, k))
 								err := migrator.Down()
 								if err != nil {
+									if err != gomigrate.ErrNoChange {
+										version, dirty, _ := migrator.Version()
+										if version != 0 && dirty {
+											migrator.Force(int(version))
+
+											migrator.Steps(-1)
+										}
+									}
+
 									progress.Stop()
 
 									return err
@@ -327,9 +435,17 @@ func main() {
 							progress.Suffix = fmt.Sprintf(" Tear down migrations for %s on %s schema", source, k)
 							progress.Start()
 
-							migrator := migrate.NewMigrator(db, source, k, fmt.Sprintf("%s/%s", config.Migrate.Folder, k))
+							migrator := migrate.NewMigrator(db, dbConfig.Name, k, fmt.Sprintf("%s/%s", config.Migrate.Folder, k))
 							err := migrator.Down()
 							if err != nil {
+								if err != gomigrate.ErrNoChange {
+									version, dirty, _ := migrator.Version()
+									if version != 0 && dirty {
+										migrator.Force(int(version))
+										migrator.Steps(-1)
+									}
+								}
+
 								progress.Stop()
 
 								return err
@@ -362,13 +478,22 @@ func main() {
 						return err
 					}
 
-					migrator := migrate.NewMigrator(db, source, schema, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
+					migrator := migrate.NewMigrator(db, dbConfig.Name, schema, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
 
 					progress := spinner.New(spinner.CharSets[spinerIndex], duration)
 					progress.Suffix = fmt.Sprintf(" Tear down migrations for %s on %s schema", source, schema)
 					progress.Start()
 
 					err = migrator.Down()
+					if err != nil {
+						if err != gomigrate.ErrNoChange {
+							version, dirty, _ := migrator.Version()
+							if version != 0 && dirty {
+								migrator.Force(int(version))
+								migrator.Steps(-1)
+							}
+						}
+					}
 
 					progress.Stop()
 

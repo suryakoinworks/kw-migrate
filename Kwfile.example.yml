@@ -4,6 +4,8 @@ migrate:
     pg_dump: /usr/bin/pg_dump
     folder: migrations
     source: default
+    clusters:
+        local: [local]
     connections:
         default:
             host: localhost

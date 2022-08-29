@@ -17,6 +17,7 @@ type (
 		PgDump      string                         `yaml:"pg_dump"`
 		Folder      string                         `yaml:"folder"`
 		Source      string                         `yaml:"source"`
+		Cluster     map[string][]string            `yaml:"clusters"`
 		Connections map[string]Connection          `yaml:"connections"`
 		Schemas     map[string]map[string][]string `yaml:"schemas"`
 	}
