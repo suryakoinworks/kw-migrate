@@ -276,7 +276,6 @@ func main() {
 						if err != gomigrate.ErrNoChange {
 							version, dirty, _ := migrator.Version()
 							if version != 0 && dirty {
-								fmt.Println("HE")
 								migrator.Force(int(version))
 								err := migrator.Steps(-1)
 
