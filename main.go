@@ -31,6 +31,7 @@ func main() {
 		Commands: []*cli.Command{
 			{
 				Name:        "sync",
+				Aliases:     []string{"sy"},
 				Description: "sync <cluster> <schema>",
 				Usage:       "Cluster Sync",
 				Action: func(ctx *cli.Context) error {
@@ -291,7 +292,7 @@ func main() {
 			},
 			{
 				Name:        "rollback",
-				Aliases:     []string{"r"},
+				Aliases:     []string{"rb"},
 				Description: "rollback <db> <schema> <step>",
 				Usage:       "Migration Rollback",
 				Action: func(ctx *cli.Context) error {
@@ -329,7 +330,7 @@ func main() {
 			},
 			{
 				Name:        "run",
-				Aliases:     []string{"s"},
+				Aliases:     []string{"rn"},
 				Description: "run <db> <schema> <step>",
 				Usage:       "Run Migration",
 				Action: func(ctx *cli.Context) error {
