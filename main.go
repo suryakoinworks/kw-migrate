@@ -306,8 +306,8 @@ func main() {
 			{
 				Name:        "create",
 				Aliases:     []string{"c"},
-				Description: "create",
-				Usage:       "Create New Migration",
+				Description: "create <schema> <name>",
+				Usage:       "Create New Migration  for Schema",
 				Action: func(ctx *cli.Context) error {
 					if ctx.NArg() != 2 {
 						return errors.New("Not enough arguments. Usage: kw-migrate create <schema> <name>")
