@@ -737,19 +737,19 @@ func main() {
 						progress.Start()
 
 						for k, s := range scripts {
-							for i, c := range s {
+							for _, c := range s {
 								if c.UpForeignScript == "" {
 									continue
 								}
 
-								err := os.WriteFile(fmt.Sprintf("%s/%s/%d_foreign_keys_%d.up.sql", config.Migrate.Folder, k, version, i), []byte(c.UpForeignScript), 0777)
+								err := os.WriteFile(fmt.Sprintf("%s/%s/%d_foreign_keys_%s.up.sql", config.Migrate.Folder, k, version, c.Table), []byte(c.UpForeignScript), 0777)
 								if err != nil {
 									progress.Stop()
 
 									return err
 								}
 
-								err = os.WriteFile(fmt.Sprintf("%s/%s/%d_foreign_keys_%d.down.sql", config.Migrate.Folder, k, version, i), []byte(c.DownForeignScript), 0777)
+								err = os.WriteFile(fmt.Sprintf("%s/%s/%d_foreign_keys_%s.down.sql", config.Migrate.Folder, k, version, c.Table), []byte(c.DownForeignScript), 0777)
 								if err != nil {
 									progress.Stop()
 

@@ -12,6 +12,7 @@ import (
 
 type (
 	Script struct {
+		Table               string
 		UpScript            string
 		UpReferenceScript   string
 		UpForeignScript     string
@@ -113,6 +114,7 @@ func (d ddl) Generate(table string, schemaOnly bool) Script {
 	}
 
 	return Script{
+		Table:               strings.ReplaceAll(table, ".", "_"),
 		UpScript:            strings.Join(upScript, "\n"),
 		UpReferenceScript:   strings.Join(upReferenceScript, "\n"),
 		UpForeignScript:     strings.Join(upForeignScript, "\n"),
