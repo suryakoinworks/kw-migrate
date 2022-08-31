@@ -678,6 +678,7 @@ func main() {
 					for k, v := range config.Migrate.Schemas {
 						os.MkdirAll(fmt.Sprintf("%s/%s", config.Migrate.Folder, k), 0777)
 
+						scripts[k] = []migrate.Script{}
 						schema := color.New(color.FgGreen).Sprint(k)
 						tlen := len(v["tables"])
 						for j, t := range v["tables"] {
@@ -736,14 +737,14 @@ func main() {
 						progress.Suffix = " Mapping references..."
 						progress.Start()
 
+						exists := map[string]bool{}
 						for k, s := range scripts {
-							exists := map[string]bool{}
 							for _, c := range s {
 								if c.UpForeignScript == "" {
 									continue
 								}
 
-								if _, ok := exists[c.Table]; ok {
+								if _, ok := exists[fmt.Sprintf("%s_%s", k, c.Table)]; ok {
 									continue
 								}
 
@@ -763,7 +764,7 @@ func main() {
 
 								version++
 
-								exists[c.Table] = true
+								exists[fmt.Sprintf("%s_%s", k, c.Table)] = true
 							}
 						}
 
