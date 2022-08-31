@@ -737,8 +737,13 @@ func main() {
 						progress.Start()
 
 						for k, s := range scripts {
+							exists := map[string]bool{}
 							for _, c := range s {
 								if c.UpForeignScript == "" {
+									continue
+								}
+
+								if _, ok := exists[c.Table]; ok {
 									continue
 								}
 
@@ -757,8 +762,9 @@ func main() {
 								}
 
 								version++
-							}
 
+								exists[c.Table] = true
+							}
 						}
 
 						i++
