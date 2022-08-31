@@ -1,21 +1,21 @@
 version: 1.0
 
 migrate:
-    pg_dump: /usr/bin/pg_dump
-    folder: migrations
-    source: default
-    clusters:
-        local: [local]
-    connections:
-        default:
-            host: localhost
-            port: 5432
-            name: asgard
-            user: user
-            password: s3cret
-    schemas:
-        activity:
-            excludes:
-                - virtual_accounts
-            with_data:
-                - admin_params
+  pg_dump: /usr/bin/pg_dump
+  folder: migrations
+  source: default
+  clusters:
+    local: [local]
+  connections:
+    default:
+      host: localhost
+      port: 5432
+      name: asgard
+      user: user
+      password: s3cret
+  schemas:
+    activity:
+      excludes:
+        - virtual_accounts
+      with_data:
+        - admin_params
