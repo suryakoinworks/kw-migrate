@@ -73,18 +73,16 @@ func main() {
 						progress.Start()
 
 						err = migrator.Up()
-						if err != nil {
-							if err != gomigrate.ErrNoChange {
-								version, dirty, _ := migrator.Version()
-								if version != 0 && dirty {
-									migrator.Force(int(version))
-									migrator.Steps(-1)
-								}
-							}
-
+						if err == nil || err == gomigrate.ErrNoChange {
 							progress.Stop()
 
-							return err
+							return nil
+						}
+
+						version, dirty, _ := migrator.Version()
+						if version != 0 && dirty {
+							migrator.Force(int(version))
+							migrator.Steps(-1)
 						}
 
 						progress.Stop()
@@ -126,19 +124,17 @@ func main() {
 								progress.Start()
 
 								migrator := migrate.NewMigrator(db, source.Name, k, fmt.Sprintf("%s/%s", config.Migrate.Folder, k))
-								err := migrator.Up()
-								if err != nil {
-									if err != gomigrate.ErrNoChange {
-										version, dirty, _ := migrator.Version()
-										if version != 0 && dirty {
-											migrator.Force(int(version))
-											migrator.Steps(-1)
-										}
-									}
-
+								err = migrator.Up()
+								if err == nil || err == gomigrate.ErrNoChange {
 									progress.Stop()
 
-									return err
+									return nil
+								}
+
+								version, dirty, _ := migrator.Version()
+								if version != 0 && dirty {
+									migrator.Force(int(version))
+									migrator.Steps(-1)
 								}
 
 								progress.Stop()
@@ -175,19 +171,17 @@ func main() {
 							progress.Start()
 
 							migrator := migrate.NewMigrator(db, dbConfig.Name, k, fmt.Sprintf("%s/%s", config.Migrate.Folder, k))
-							err := migrator.Up()
-							if err != nil {
-								if err != gomigrate.ErrNoChange {
-									version, dirty, _ := migrator.Version()
-									if version != 0 && dirty {
-										migrator.Force(int(version))
-										migrator.Steps(-1)
-									}
-								}
-
+							err = migrator.Up()
+							if err == nil || err == gomigrate.ErrNoChange {
 								progress.Stop()
 
-								return err
+								return nil
+							}
+
+							version, dirty, _ := migrator.Version()
+							if version != 0 && dirty {
+								migrator.Force(int(version))
+								migrator.Steps(-1)
 							}
 
 							progress.Stop()
@@ -273,16 +267,16 @@ func main() {
 					progress.Start()
 
 					err = migrator.Up()
-					if err != nil {
-						if err != gomigrate.ErrNoChange {
-							version, dirty, _ := migrator.Version()
-							if version != 0 && dirty {
-								migrator.Force(int(version))
-								err := migrator.Steps(-1)
+					if err == nil || err == gomigrate.ErrNoChange {
+						progress.Stop()
 
-								fmt.Println(err)
-							}
-						}
+						return nil
+					}
+
+					version, dirty, _ := migrator.Version()
+					if version != 0 && dirty {
+						migrator.Force(int(version))
+						migrator.Steps(-1)
 					}
 
 					progress.Stop()
@@ -394,20 +388,17 @@ func main() {
 								progress.Start()
 
 								migrator := migrate.NewMigrator(db, source.Name, k, fmt.Sprintf("%s/%s", config.Migrate.Folder, k))
-								err := migrator.Down()
-								if err != nil {
-									if err != gomigrate.ErrNoChange {
-										version, dirty, _ := migrator.Version()
-										if version != 0 && dirty {
-											migrator.Force(int(version))
-
-											migrator.Steps(-1)
-										}
-									}
-
+								err = migrator.Down()
+								if err == nil || err == gomigrate.ErrNoChange {
 									progress.Stop()
 
-									return err
+									return nil
+								}
+
+								version, dirty, _ := migrator.Version()
+								if version != 0 && dirty {
+									migrator.Force(int(version))
+									migrator.Steps(-1)
 								}
 
 								progress.Stop()
@@ -439,19 +430,17 @@ func main() {
 							progress.Start()
 
 							migrator := migrate.NewMigrator(db, dbConfig.Name, k, fmt.Sprintf("%s/%s", config.Migrate.Folder, k))
-							err := migrator.Down()
-							if err != nil {
-								if err != gomigrate.ErrNoChange {
-									version, dirty, _ := migrator.Version()
-									if version != 0 && dirty {
-										migrator.Force(int(version))
-										migrator.Steps(-1)
-									}
-								}
-
+							err = migrator.Down()
+							if err == nil || err == gomigrate.ErrNoChange {
 								progress.Stop()
 
-								return err
+								return nil
+							}
+
+							version, dirty, _ := migrator.Version()
+							if version != 0 && dirty {
+								migrator.Force(int(version))
+								migrator.Steps(-1)
 							}
 
 							progress.Stop()
@@ -488,14 +477,16 @@ func main() {
 					progress.Start()
 
 					err = migrator.Down()
-					if err != nil {
-						if err != gomigrate.ErrNoChange {
-							version, dirty, _ := migrator.Version()
-							if version != 0 && dirty {
-								migrator.Force(int(version))
-								migrator.Steps(-1)
-							}
-						}
+					if err == nil || err == gomigrate.ErrNoChange {
+						progress.Stop()
+
+						return nil
+					}
+
+					version, dirty, _ := migrator.Version()
+					if version != 0 && dirty {
+						migrator.Force(int(version))
+						migrator.Steps(-1)
 					}
 
 					progress.Stop()
