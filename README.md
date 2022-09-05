@@ -30,7 +30,7 @@ Manage postgresql cluster migration easly
 
 ## Commands available
 
-- `kw-migrate create <name>` to create new migration file
+- `kw-migrate create <schema> <name>` to create new migration file
 
 - `kw-migrate up [--all-connection=true] [--all-schema=true] <db> <schema>` to deploy migration(s) from database and schema which you provide
 

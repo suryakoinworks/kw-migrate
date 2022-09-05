@@ -319,13 +319,13 @@ func main() {
 					}
 
 					n, err := strconv.ParseInt(ctx.Args().Get(2), 10, 0)
-					if err != nil || n >= 0 {
+					if err != nil || n <= 0 {
 						return errors.New("Invalid step")
 					}
 
 					migrator := migrate.NewMigrator(db, dbConfig.Name, schema, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
 
-					return migrator.Steps(int(n))
+					return migrator.Steps(int(n * -1))
 				},
 			},
 			{
