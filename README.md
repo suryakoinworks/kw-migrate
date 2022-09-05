@@ -87,4 +87,4 @@ migrate:
 
 ## Limitation
 
-- `kw-migrate generate` command run use `--table` option, features like UDT, functions, etc aren't imported
+- `kw-migrate generate` command run use `--table` option, features like UDT, functions, etc doesn't imported
