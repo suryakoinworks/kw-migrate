@@ -133,15 +133,15 @@ func (d ddl) downScript(line string) bool {
 }
 
 func (d ddl) downReferenceScript(line string) bool {
-	return strings.Contains(line, "pkey;") || strings.Contains(line, "fkey;")
+	return strings.Contains(line, "pkey") || strings.Contains(line, "fkey") || strings.Contains(line, "pk") || strings.Contains(line, "fk")
 }
 
 func (d ddl) downRerefence(line string) bool {
-	return strings.Contains(line, "pkey;")
+	return strings.Contains(line, "pkey") || strings.Contains(line, "pk")
 }
 
 func (d ddl) downForeignkey(line string) bool {
-	return strings.Contains(line, "fkey;")
+	return strings.Contains(line, "fkey") || strings.Contains(line, "fk")
 }
 
 func (d ddl) foreignScript(line string) bool {
