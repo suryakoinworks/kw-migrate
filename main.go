@@ -530,7 +530,7 @@ func main() {
 			{
 				Name:        "generate",
 				Aliases:     []string{"gen"},
-				Description: "generate",
+				Description: "generate <schema>",
 				Usage:       "Generate Migration from Existing Database",
 				Action: func(ctx *cli.Context) error {
 					config := kw.Parse("Kwfile.yml")
