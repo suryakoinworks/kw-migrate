@@ -40,6 +40,10 @@ Manage postgresql cluster migration easly
 
 - `kw-migrate rollback <db> <schema> <step>` to rollback migration version from database and schema which you provide
 
+- `kw-migrate run <db> <schema> <step>` to run migration version from database and schema which you provide
+
+- `kw-migrate sync <cluster> <schema>` to sync migration in cluster for schema which you provide
+
 Run `kw-migrate --help` for complete commands
 
 ## Usage
