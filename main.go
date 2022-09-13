@@ -31,7 +31,7 @@ func main() {
 		Commands: []*cli.Command{
 			{
 				Name:        "sync",
-				Aliases:     []string{"sy"},
+				Aliases:     []string{"syc"},
 				Description: "sync <cluster> <schema>",
 				Usage:       "Cluster Sync",
 				Action: func(ctx *cli.Context) error {
@@ -152,7 +152,7 @@ func main() {
 						source := ctx.Args().Get(0)
 						dbConfig, ok := config.Migrate.Connections[source]
 						if !ok {
-							return errors.New(fmt.Sprintf("Config for '%s' not found", source))
+							return errors.New(fmt.Sprintf("Database connection '%s' not found", source))
 						}
 
 						db, err := kw.Connect(dbConfig)
@@ -198,7 +198,7 @@ func main() {
 					dbConfig, ok := config.Migrate.Connections[source]
 					if !ok {
 						source := ctx.Args().Get(0)
-						return errors.New(fmt.Sprintf("Config for '%s' not found", source))
+						return errors.New(fmt.Sprintf("Database connection '%s' not found", source))
 					}
 
 					db, err := kw.Connect(dbConfig)
@@ -298,7 +298,7 @@ func main() {
 					source := ctx.Args().Get(0)
 					dbConfig, ok := config.Migrate.Connections[source]
 					if !ok {
-						return errors.New(fmt.Sprintf("Config for '%s' not found", source))
+						return errors.New(fmt.Sprintf("Database connection '%s' not found", source))
 					}
 
 					schema := ctx.Args().Get(1)
@@ -336,7 +336,7 @@ func main() {
 					source := ctx.Args().Get(0)
 					dbConfig, ok := config.Migrate.Connections[source]
 					if !ok {
-						return errors.New(fmt.Sprintf("Config for '%s' not found", source))
+						return errors.New(fmt.Sprintf("Database connection '%s' not found", source))
 					}
 
 					schema := ctx.Args().Get(1)
@@ -362,7 +362,7 @@ func main() {
 			},
 			{
 				Name:    "down",
-				Aliases: []string{"d"},
+				Aliases: []string{"dwn"},
 				Flags: []cli.Flag{
 					&cli.BoolFlag{Name: "all-connection", Aliases: []string{"ac"}},
 					&cli.BoolFlag{Name: "all-schema", Aliases: []string{"as"}},
@@ -416,7 +416,7 @@ func main() {
 						source := ctx.Args().Get(0)
 						dbConfig, ok := config.Migrate.Connections[source]
 						if !ok {
-							return errors.New(fmt.Sprintf("Config for '%s' not found", source))
+							return errors.New(fmt.Sprintf("Database connection '%s' not found", source))
 						}
 
 						db, err := kw.Connect(dbConfig)
@@ -456,7 +456,7 @@ func main() {
 					source := ctx.Args().Get(0)
 					dbConfig, ok := config.Migrate.Connections[source]
 					if !ok {
-						return errors.New(fmt.Sprintf("Config for '%s' not found", source))
+						return errors.New(fmt.Sprintf("Database connection '%s' not found", source))
 					}
 
 					schema := ctx.Args().Get(1)
@@ -495,8 +495,48 @@ func main() {
 				},
 			},
 			{
+				Name:        "clean",
+				Aliases:     []string{"cln"},
+				Description: "clean <db> <schema>",
+				Usage:       "Clean dirty migration",
+				Action: func(ctx *cli.Context) error {
+					if ctx.NArg() != 2 {
+						return errors.New("Not enough arguments. Usage: kw-migrate clean <db> <schema>")
+					}
+
+					config := kw.Parse("Kwfile.yml")
+
+					source := ctx.Args().Get(0)
+					dbConfig, ok := config.Migrate.Connections[source]
+					if !ok {
+						return errors.New(fmt.Sprintf("Database connection '%s' not found", source))
+					}
+
+					schema := ctx.Args().Get(1)
+					_, ok = config.Migrate.Schemas[schema]
+					if !ok {
+						return errors.New(fmt.Sprintf("Schema '%s' not found", schema))
+					}
+
+					db, err := kw.Connect(dbConfig)
+					if err != nil {
+						return err
+					}
+
+					migrator := migrate.NewMigrator(db, dbConfig.Name, schema, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
+
+					version, dirty, _ := migrator.Version()
+					if version != 0 && dirty {
+						migrator.Force(int(version))
+						migrator.Steps(-1)
+					}
+
+					return err
+				},
+			},
+			{
 				Name:        "create",
-				Aliases:     []string{"c"},
+				Aliases:     []string{"crt"},
 				Description: "create <schema> <name>",
 				Usage:       "Create New Migration  for Schema",
 				Action: func(ctx *cli.Context) error {
