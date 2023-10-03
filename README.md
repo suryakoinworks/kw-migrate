@@ -36,7 +36,7 @@ Manage postgresql cluster migration easly
 
 - `kw-migrate down [--all-connection=true] [--all-schema=true] <db> <schema>` to drop migration(s) from database and schema which you provide
 
-- `kw-migrate generate <schema>` to reverse migration from your `source` database 
+- `kw-migrate generate <schema>` to reverse migration from your `source` database, this command use `PGPASSWORD` environment variable
 
 - `kw-migrate rollback <db> <schema> <step>` to rollback migration version from database and schema which you provide
 
