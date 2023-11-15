@@ -1,4 +1,4 @@
-# KW-Migrate
+# Koinworks Migration Tool (KMT)
 
 Manage postgresql cluster migration easly
 
