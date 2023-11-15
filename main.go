@@ -20,8 +20,8 @@ import (
 const (
 	VERSION_MAJOR  = 10000
 	VERSION_MINOR  = 100
-	VERSION_PATCH  = 0
-	VERSION_STRING = "1.0.0"
+	VERSION_PATCH  = 7
+	VERSION_STRING = "1.1.7"
 )
 
 var (
@@ -860,21 +860,14 @@ func main() {
 				},
 			},
 			{
-				Name:        "update",
-				Aliases:     []string{"update"},
-				Description: "update",
-				Usage:       "Update kmt",
-				Action: func(ctx *cli.Context) error {
-					return nil
-				},
-			},
-			{
 				Name:        "version",
 				Aliases:     []string{"version"},
 				Description: "version",
 				Usage:       "Show kmt version",
 				Action: func(ctx *cli.Context) error {
-					fmt.Println(VERSION_STRING)
+					color.New(color.FgGreen).Printf("VersionID: %d\n", VERSION_MAJOR+VERSION_MINOR+VERSION_PATCH)
+					color.New(color.FgGreen).Printf("Version: %s\n\n", VERSION_STRING)
+					color.New(color.FgGreen).Println("Author: Muhamad Surya Iksanudin<surya.iksanudi@koinworks.com>")
 
 					return nil
 				},
