@@ -34,9 +34,9 @@ Manage postgresql cluster migration easly
 
 - `kmt create <schema> <name>` to create new migration file
 
-- `kmt up [--all-connection=true] [--all-schema=true] <db> <schema>` to deploy migration(s) from database and schema which you provide
+- `kmt up <db> <schema>` to deploy migration(s) from database and schema which you provide
 
-- `kmt down [--all-connection=true] [--all-schema=true] <db> <schema>` to drop migration(s) from database and schema which you provide
+- `kmt down <db> <schema>` to drop migration(s) from database and schema which you provide
 
 - `kmt generate <schema>` to reverse migration from your `source` database, this command use `PGPASSWORD` environment variable
 
