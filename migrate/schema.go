@@ -3,7 +3,7 @@ package migrate
 import (
 	"database/sql"
 	"fmt"
-	"koin-migrate/kmt"
+	"kmt/config"
 	"os"
 	"os/exec"
 	"strconv"
@@ -28,11 +28,11 @@ type (
 
 	ddl struct {
 		command string
-		config  kmt.Connection
+		config  config.Connection
 	}
 )
 
-func NewDdl(command string, config kmt.Connection) ddl {
+func NewDdl(command string, config config.Connection) ddl {
 	return ddl{command: command, config: config}
 }
 

@@ -3,8 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
-	"koin-migrate/kmt"
-	"koin-migrate/migrate"
+	kmt "kmt/config"
+	"kmt/migrate"
 	"log"
 	"os"
 	"os/exec"
@@ -20,8 +20,8 @@ import (
 const (
 	VERSION_MAJOR  = 10000
 	VERSION_MINOR  = 100
-	VERSION_PATCH  = 7
-	VERSION_STRING = "1.1.7"
+	VERSION_PATCH  = 9
+	VERSION_STRING = "1.1.9"
 )
 
 var (

@@ -22,9 +22,11 @@ Manage postgresql cluster migration easly
 
 - Download dependencies `cd kmt && go get && go mod tidy`
 
-- Build `go build -o kmt`
+- Build `go build`
 
-- Move to bin or add to environment variables
+- Run `mv kmt /usr/local/bin/kmt`
+
+- Set executable `chmod a+x /usr/local/bin/kmt`
 
 - Check using `kmt --help`
 

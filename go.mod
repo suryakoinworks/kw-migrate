@@ -1,4 +1,4 @@
-module koin-migrate
+module kmt
 
 go 1.17
 
