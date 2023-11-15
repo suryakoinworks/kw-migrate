@@ -16,35 +16,35 @@ Manage postgresql cluster migration easly
 
 ## Install
 
-- Download latest release `https://github.com/suryakoinworks/kw-migrate/tags`
+- Download latest release `https://github.com/suryakoinworks/kmt/tags`
 
 - Extract source
 
-- Download dependencies `cd kw-migrate && go get && go mod tidy`
+- Download dependencies `cd kmt && go get && go mod tidy`
 
-- Build `go build -o kw-migrate`
+- Build `go build -o kmt`
 
 - Move to bin or add to environment variables
 
-- Check using `kw-migrate --help`
+- Check using `kmt --help`
 
 ## Commands available
 
-- `kw-migrate create <schema> <name>` to create new migration file
+- `kmt create <schema> <name>` to create new migration file
 
-- `kw-migrate up [--all-connection=true] [--all-schema=true] <db> <schema>` to deploy migration(s) from database and schema which you provide
+- `kmt up [--all-connection=true] [--all-schema=true] <db> <schema>` to deploy migration(s) from database and schema which you provide
 
-- `kw-migrate down [--all-connection=true] [--all-schema=true] <db> <schema>` to drop migration(s) from database and schema which you provide
+- `kmt down [--all-connection=true] [--all-schema=true] <db> <schema>` to drop migration(s) from database and schema which you provide
 
-- `kw-migrate generate <schema>` to reverse migration from your `source` database, this command use `PGPASSWORD` environment variable
+- `kmt generate <schema>` to reverse migration from your `source` database, this command use `PGPASSWORD` environment variable
 
-- `kw-migrate rollback <db> <schema> <step>` to rollback migration version from database and schema which you provide
+- `kmt rollback <db> <schema> <step>` to rollback migration version from database and schema which you provide
 
-- `kw-migrate run <db> <schema> <step>` to run migration version from database and schema which you provide
+- `kmt run <db> <schema> <step>` to run migration version from database and schema which you provide
 
-- `kw-migrate sync <cluster> <schema>` to sync migration in cluster for schema which you provide
+- `kmt sync <cluster> <schema>` to sync migration in cluster for schema which you provide
 
-Run `kw-migrate --help` for complete commands
+Run `kmt --help` for complete commands
 
 ## Usage
 
@@ -91,4 +91,4 @@ migrate:
 
 ## Limitation
 
-- `kw-migrate generate` command run use `--table` option, features like UDT, functions, etc doesn't imported
+- `kmt generate` command run use `--table` option, features like UDT, functions, etc doesn't imported

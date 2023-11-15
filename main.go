@@ -3,10 +3,11 @@ package main
 import (
 	"errors"
 	"fmt"
-	"koin-migrate/kw"
+	"koin-migrate/kmt"
 	"koin-migrate/migrate"
 	"log"
 	"os"
+	"os/exec"
 	"strconv"
 	"time"
 
@@ -16,6 +17,13 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+const (
+	VERSION_MAJOR  = 10000
+	VERSION_MINOR  = 100
+	VERSION_PATCH  = 0
+	VERSION_STRING = "1.0.0"
+)
+
 var (
 	spinerIndex = 9
 	duration    = 77 * time.Millisecond
@@ -23,9 +31,9 @@ var (
 
 func main() {
 	app := &cli.App{
-		Name:                   "kw-migrate",
+		Name:                   "kmt",
 		Usage:                  "Koinworks Migration Tool",
-		Description:            "kw-migrate help",
+		Description:            "kmt help",
 		EnableBashCompletion:   true,
 		UseShortOptionHandling: true,
 		Commands: []*cli.Command{
@@ -36,24 +44,24 @@ func main() {
 				Usage:       "Cluster Sync",
 				Action: func(ctx *cli.Context) error {
 					if ctx.NArg() != 2 {
-						return errors.New("Not enough arguments. Usage: kw-migrate sync <cluster> <schema>")
+						return errors.New("not enough arguments. Usage: kmt sync <cluster> <schema>")
 					}
 
-					config := kw.Parse("Kwfile.yml")
+					config := kmt.Parse("Kwfile.yml")
 					cluster := ctx.Args().Get(0)
 					lists, ok := config.Migrate.Cluster[cluster]
 					if !ok {
-						return errors.New(fmt.Sprintf("Cluster '%s' isn't defined", cluster))
+						return fmt.Errorf("cluster '%s' isn't defined", cluster)
 					}
 
-					connections := map[string]kw.Connection{}
+					connections := map[string]kmt.Connection{}
 					for _, c := range lists {
 						if config.Migrate.Source == c {
 							continue
 						}
 
 						if _, ok := config.Migrate.Connections[c]; !ok {
-							return errors.New(fmt.Sprintf("Connection '%s' isn't defined", c))
+							return fmt.Errorf("connection '%s' isn't defined", c)
 						}
 
 						connections[c] = config.Migrate.Connections[c]
@@ -61,7 +69,7 @@ func main() {
 
 					schema := ctx.Args().Get(1)
 					for i, source := range connections {
-						db, err := kw.Connect(source)
+						db, err := kmt.Connect(source)
 						if err != nil {
 							return err
 						}
@@ -101,14 +109,14 @@ func main() {
 				},
 				Usage: "Migration Up",
 				Action: func(ctx *cli.Context) error {
-					config := kw.Parse("Kwfile.yml")
+					config := kmt.Parse("Kwfile.yml")
 					if ctx.Bool("all-connection") {
 						for i, source := range config.Migrate.Connections {
 							if config.Migrate.Source == i {
 								continue
 							}
 
-							db, err := kw.Connect(source)
+							db, err := kmt.Connect(source)
 							if err != nil {
 								return err
 							}
@@ -146,16 +154,16 @@ func main() {
 
 					if ctx.Bool("all-schema") {
 						if ctx.NArg() != 1 {
-							return errors.New("Not enough arguments. Usage: kw-migrate up <db> --all-schema")
+							return errors.New("not enough arguments. Usage: kmt up <db> --all-schema")
 						}
 
 						source := ctx.Args().Get(0)
 						dbConfig, ok := config.Migrate.Connections[source]
 						if !ok {
-							return errors.New(fmt.Sprintf("Database connection '%s' not found", source))
+							return fmt.Errorf("database connection '%s' not found", source)
 						}
 
-						db, err := kw.Connect(dbConfig)
+						db, err := kmt.Connect(dbConfig)
 						if err != nil {
 							return err
 						}
@@ -191,17 +199,17 @@ func main() {
 					}
 
 					if ctx.NArg() != 2 {
-						return errors.New("Not enough arguments. Usage: kw-migrate up <db> <schema>")
+						return errors.New("not enough arguments. Usage: kmt up <db> <schema>")
 					}
 
 					source := ctx.Args().Get(0)
 					dbConfig, ok := config.Migrate.Connections[source]
 					if !ok {
 						source := ctx.Args().Get(0)
-						return errors.New(fmt.Sprintf("Database connection '%s' not found", source))
+						return fmt.Errorf("database connection '%s' not found", source)
 					}
 
-					db, err := kw.Connect(dbConfig)
+					db, err := kmt.Connect(dbConfig)
 					if err != nil {
 						return err
 					}
@@ -252,7 +260,7 @@ func main() {
 					schema := ctx.Args().Get(1)
 					_, ok = config.Migrate.Schemas[schema]
 					if !ok {
-						return errors.New(fmt.Sprintf("Schema '%s' not found", schema))
+						return fmt.Errorf("schema '%s' not found", schema)
 					}
 
 					_, err = db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", schema))
@@ -290,31 +298,31 @@ func main() {
 				Description: "rollback <db> <schema> <step>",
 				Usage:       "Migration Rollback",
 				Action: func(ctx *cli.Context) error {
-					config := kw.Parse("Kwfile.yml")
+					config := kmt.Parse("Kwfile.yml")
 					if ctx.NArg() != 3 {
-						return errors.New("Not enough arguments. Usage: kw-migrate rollback <db> <schema> <step>")
+						return errors.New("not enough arguments. Usage: kmt rollback <db> <schema> <step>")
 					}
 
 					source := ctx.Args().Get(0)
 					dbConfig, ok := config.Migrate.Connections[source]
 					if !ok {
-						return errors.New(fmt.Sprintf("Database connection '%s' not found", source))
+						return fmt.Errorf("database connection '%s' not found", source)
 					}
 
 					schema := ctx.Args().Get(1)
 					_, ok = config.Migrate.Schemas[schema]
 					if !ok {
-						return errors.New(fmt.Sprintf("Schema '%s' not found", schema))
+						return fmt.Errorf("schema '%s' not found", schema)
 					}
 
-					db, err := kw.Connect(dbConfig)
+					db, err := kmt.Connect(dbConfig)
 					if err != nil {
 						return err
 					}
 
 					n, err := strconv.ParseInt(ctx.Args().Get(2), 10, 0)
 					if err != nil || n <= 0 {
-						return errors.New("Invalid step")
+						return errors.New("invalid step")
 					}
 
 					migrator := migrate.NewMigrator(db, dbConfig.Name, schema, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
@@ -328,31 +336,31 @@ func main() {
 				Description: "run <db> <schema> <step>",
 				Usage:       "Run Migration",
 				Action: func(ctx *cli.Context) error {
-					config := kw.Parse("Kwfile.yml")
+					config := kmt.Parse("Kwfile.yml")
 					if ctx.NArg() != 3 {
-						return errors.New("Not enough arguments. Usage: kw-migrate run <db> <schema> <step>")
+						return errors.New("not enough arguments. Usage: kmt run <db> <schema> <step>")
 					}
 
 					source := ctx.Args().Get(0)
 					dbConfig, ok := config.Migrate.Connections[source]
 					if !ok {
-						return errors.New(fmt.Sprintf("Database connection '%s' not found", source))
+						return fmt.Errorf("database connection '%s' not found", source)
 					}
 
 					schema := ctx.Args().Get(1)
 					_, ok = config.Migrate.Schemas[schema]
 					if !ok {
-						return errors.New(fmt.Sprintf("Schema '%s' not found", schema))
+						return fmt.Errorf("schema '%s' not found", schema)
 					}
 
-					db, err := kw.Connect(dbConfig)
+					db, err := kmt.Connect(dbConfig)
 					if err != nil {
 						return err
 					}
 
 					n, err := strconv.ParseInt(ctx.Args().Get(2), 10, 0)
 					if err != nil || n <= 0 {
-						return errors.New("Invalid step")
+						return errors.New("invalid step")
 					}
 
 					migrator := migrate.NewMigrator(db, dbConfig.Name, schema, fmt.Sprintf("%s/%s", config.Migrate.Folder, schema))
@@ -370,14 +378,14 @@ func main() {
 				Description: "down [<db>] [<schema>] [--all-connection] [--all-schema]",
 				Usage:       "Migration Down",
 				Action: func(ctx *cli.Context) error {
-					config := kw.Parse("Kwfile.yml")
+					config := kmt.Parse("Kwfile.yml")
 					if ctx.Bool("all-connection") {
 						for i, source := range config.Migrate.Connections {
 							if config.Migrate.Source == i {
 								continue
 							}
 
-							db, err := kw.Connect(source)
+							db, err := kmt.Connect(source)
 							if err != nil {
 								return err
 							}
@@ -410,16 +418,16 @@ func main() {
 
 					if ctx.Bool("all-schema") {
 						if ctx.NArg() != 1 {
-							return errors.New("Not enough arguments. Usage: kw-migrate up <db> --all-schema")
+							return errors.New("not enough arguments. Usage: kmt up <db> --all-schema")
 						}
 
 						source := ctx.Args().Get(0)
 						dbConfig, ok := config.Migrate.Connections[source]
 						if !ok {
-							return errors.New(fmt.Sprintf("Database connection '%s' not found", source))
+							return fmt.Errorf("database connection '%s' not found", source)
 						}
 
-						db, err := kw.Connect(dbConfig)
+						db, err := kmt.Connect(dbConfig)
 						if err != nil {
 							return err
 						}
@@ -450,22 +458,22 @@ func main() {
 					}
 
 					if ctx.NArg() != 2 {
-						return errors.New("Not enough arguments. Usage: kw-migrate down <db> <schema>")
+						return errors.New("not enough arguments. Usage: kmt down <db> <schema>")
 					}
 
 					source := ctx.Args().Get(0)
 					dbConfig, ok := config.Migrate.Connections[source]
 					if !ok {
-						return errors.New(fmt.Sprintf("Database connection '%s' not found", source))
+						return fmt.Errorf("database connection '%s' not found", source)
 					}
 
 					schema := ctx.Args().Get(1)
 					_, ok = config.Migrate.Schemas[schema]
 					if !ok {
-						return errors.New(fmt.Sprintf("Schema '%s' not found", schema))
+						return fmt.Errorf("schema '%s' not found", schema)
 					}
 
-					db, err := kw.Connect(dbConfig)
+					db, err := kmt.Connect(dbConfig)
 					if err != nil {
 						return err
 					}
@@ -501,24 +509,24 @@ func main() {
 				Usage:       "Clean dirty migration",
 				Action: func(ctx *cli.Context) error {
 					if ctx.NArg() != 2 {
-						return errors.New("Not enough arguments. Usage: kw-migrate clean <db> <schema>")
+						return errors.New("not enough arguments. Usage: kmt clean <db> <schema>")
 					}
 
-					config := kw.Parse("Kwfile.yml")
+					config := kmt.Parse("Kwfile.yml")
 
 					source := ctx.Args().Get(0)
 					dbConfig, ok := config.Migrate.Connections[source]
 					if !ok {
-						return errors.New(fmt.Sprintf("Database connection '%s' not found", source))
+						return fmt.Errorf("database connection '%s' not found", source)
 					}
 
 					schema := ctx.Args().Get(1)
 					_, ok = config.Migrate.Schemas[schema]
 					if !ok {
-						return errors.New(fmt.Sprintf("Schema '%s' not found", schema))
+						return fmt.Errorf("schema '%s' not found", schema)
 					}
 
-					db, err := kw.Connect(dbConfig)
+					db, err := kmt.Connect(dbConfig)
 					if err != nil {
 						return err
 					}
@@ -541,15 +549,15 @@ func main() {
 				Usage:       "Create New Migration  for Schema",
 				Action: func(ctx *cli.Context) error {
 					if ctx.NArg() != 2 {
-						return errors.New("Not enough arguments. Usage: kw-migrate create <schema> <name>")
+						return errors.New("not enough arguments. Usage: kmt create <schema> <name>")
 					}
 
-					config := kw.Parse("Kwfile.yml")
+					config := kmt.Parse("Kwfile.yml")
 
 					schema := ctx.Args().Get(0)
 					_, ok := config.Migrate.Schemas[schema]
 					if !ok {
-						return errors.New(fmt.Sprintf("Schema '%s' not found", schema))
+						return fmt.Errorf("schema '%s' not found", schema)
 					}
 
 					os.MkdirAll(fmt.Sprintf("%s/%s", config.Migrate.Folder, schema), 0777)
@@ -573,13 +581,13 @@ func main() {
 				Description: "generate <schema>",
 				Usage:       "Generate Migration from Existing Database",
 				Action: func(ctx *cli.Context) error {
-					config := kw.Parse("Kwfile.yml")
+					config := kmt.Parse("Kwfile.yml")
 					source, ok := config.Migrate.Connections[config.Migrate.Source]
 					if !ok {
-						return errors.New(fmt.Sprintf("config for '%s' not found", config.Migrate.Source))
+						return fmt.Errorf("config for '%s' not found", config.Migrate.Source)
 					}
 
-					db, err := kw.Connect(source)
+					db, err := kmt.Connect(source)
 					if err != nil {
 						return err
 					}
@@ -592,7 +600,7 @@ func main() {
 
 						_, ok := config.Migrate.Schemas[schema]
 						if !ok {
-							return errors.New("Schema not found")
+							return errors.New("schema not found")
 						}
 
 						config.Migrate.Schemas[schema]["tables"] = migrate.NewSchema(db, schema).ListTables(config.Migrate.Schemas[schema]["excludes"])
@@ -797,6 +805,76 @@ func main() {
 					}
 
 					progress.Stop()
+
+					return nil
+				},
+			},
+			{
+				Name:        "test",
+				Aliases:     []string{"test"},
+				Description: "test",
+				Usage:       "Test kmt configuration",
+				Action: func(ctx *cli.Context) error {
+					config := kmt.Parse("Kwfile.yml")
+
+					progress := spinner.New(spinner.CharSets[spinerIndex], duration)
+					progress.Suffix = " Test connections config..."
+					progress.Start()
+
+					for i, c := range config.Migrate.Connections {
+						progress.Stop()
+						progress.Suffix = fmt.Sprintf(" Test connection to %s...", i)
+						progress.Start()
+
+						_, err := kmt.Connect(c)
+						if err != nil {
+							progress.Stop()
+							progress.Suffix = fmt.Sprintf(" Unable to connect to %s...", color.New(color.FgRed).Sprint(i))
+							progress.Start()
+
+							return err
+						}
+					}
+
+					progress.Stop()
+
+					progress = spinner.New(spinner.CharSets[spinerIndex], duration)
+					progress.Suffix = " Test 'pg_dump' command..."
+					progress.Start()
+
+					cli := exec.Command(config.Migrate.PgDump, "--help")
+					_, err := cli.CombinedOutput()
+					if err != nil {
+						progress.Stop()
+						progress.Suffix = fmt.Sprintf(" 'pg_dump' not found on %s...", color.New(color.FgRed).Sprint(config.Migrate.PgDump))
+						progress.Start()
+
+						return fmt.Errorf("'pg_dump' not found on %s", config.Migrate.PgDump)
+					}
+
+					progress.Stop()
+
+					color.New(color.FgGreen).Println("Config test passed")
+
+					return nil
+				},
+			},
+			{
+				Name:        "update",
+				Aliases:     []string{"update"},
+				Description: "update",
+				Usage:       "Update kmt",
+				Action: func(ctx *cli.Context) error {
+					return nil
+				},
+			},
+			{
+				Name:        "version",
+				Aliases:     []string{"version"},
+				Description: "version",
+				Usage:       "Show kmt version",
+				Action: func(ctx *cli.Context) error {
+					fmt.Println(VERSION_STRING)
 
 					return nil
 				},

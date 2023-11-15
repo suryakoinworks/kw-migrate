@@ -3,7 +3,7 @@ package migrate
 import (
 	"database/sql"
 	"fmt"
-	"koin-migrate/kw"
+	"koin-migrate/kmt"
 	"os"
 	"os/exec"
 	"strconv"
@@ -28,11 +28,11 @@ type (
 
 	ddl struct {
 		command string
-		config  kw.Connection
+		config  kmt.Connection
 	}
 )
 
-func NewDdl(command string, config kw.Connection) ddl {
+func NewDdl(command string, config kmt.Connection) ddl {
 	return ddl{command: command, config: config}
 }
 
@@ -134,10 +134,6 @@ func (d ddl) downScript(line string) bool {
 
 func (d ddl) downReferenceScript(line string) bool {
 	return strings.Contains(line, "pkey") || strings.Contains(line, "fkey") || strings.Contains(line, "pk") || strings.Contains(line, "fk")
-}
-
-func (d ddl) downRerefence(line string) bool {
-	return strings.Contains(line, "pkey") || strings.Contains(line, "pk")
 }
 
 func (d ddl) downForeignkey(line string) bool {
