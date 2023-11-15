@@ -21,6 +21,18 @@ type (
 		DownForeignScript   string
 	}
 
+	udt struct {
+		Name       string
+		UpScript   string
+		DownScript string
+	}
+
+	function struct {
+		Name       string
+		UpScript   string
+		DownScript string
+	}
+
 	schema struct {
 		db   *sql.DB
 		name string
@@ -184,4 +196,113 @@ func (s schema) ListTables(excludes []string) []string {
 	}
 
 	return tables
+}
+
+func (s schema) ListFunction() []function {
+	query := fmt.Sprintf(`SELECT
+    p.proname AS function_name,
+    pg_get_functiondef(p.oid) AS function_definition
+FROM pg_proc p
+JOIN pg_namespace n
+    ON n.oid = p.pronamespace
+WHERE n.nspname = '%s';`, s.name)
+
+	rows, err := s.db.Query(query)
+	if err != nil {
+		fmt.Println(err.Error())
+
+		return []function{}
+	}
+	defer rows.Close()
+
+	functions := []function{}
+	for rows.Next() {
+		var name string
+		var definition string
+		err = rows.Scan(&name, &definition)
+		if err != nil {
+			fmt.Println(err.Error())
+
+			continue
+		}
+
+		functions = append(functions, function{
+			Name:       name,
+			UpScript:   definition,
+			DownScript: "",
+		})
+	}
+
+	return functions
+}
+
+func (s schema) ListUDT() []udt {
+	query := fmt.Sprintf(`SELECT
+    pg_catalog.format_type ( t.oid, NULL ) AS name,
+    pg_catalog.array_to_string (
+        ARRAY( SELECT e.enumlabel
+                FROM pg_catalog.pg_enum e
+                WHERE e.enumtypid = t.oid
+                ORDER BY e.oid ), '#'
+        ) AS values
+FROM pg_catalog.pg_type t
+LEFT JOIN pg_catalog.pg_namespace n
+    ON n.oid = t.typnamespace
+WHERE ( t.typrelid = 0
+        OR ( SELECT c.relkind = 'c'
+                FROM pg_catalog.pg_class c
+                WHERE c.oid = t.typrelid
+            )
+    )
+    AND NOT EXISTS
+        ( SELECT 1
+            FROM pg_catalog.pg_type el
+            WHERE el.oid = t.typelem
+                AND el.typarray = t.oid
+        )
+    AND n.nspname <> 'pg_catalog'
+    AND n.nspname <> 'information_schema'
+    AND n.nspname = '%s'
+ORDER BY name;`, s.name)
+
+	rows, err := s.db.Query(query)
+	if err != nil {
+		fmt.Println(err.Error())
+
+		return []udt{}
+	}
+	defer rows.Close()
+
+	udts := []udt{}
+	for rows.Next() {
+		var name string
+		var values string
+		err = rows.Scan(&name, &values)
+		if err != nil {
+			fmt.Println(err.Error())
+
+			continue
+		}
+
+		udts = append(udts, udt{
+			Name:       strings.Replace(name, "master.", "", 1),
+			UpScript:   s.generateUdtDdl(name, values),
+			DownScript: fmt.Sprintf("DROP TYPE %s;", name),
+		})
+	}
+
+	return udts
+}
+
+func (s schema) generateUdtDdl(udt string, values string) string {
+	ddl := fmt.Sprintf("CREATE TYPE %s AS ENUM (", udt)
+
+	for _, s := range strings.Split(values, "#") {
+		ddl = fmt.Sprintf("%s '%s',", ddl, s)
+	}
+
+	ddl = strings.TrimRight(ddl, ",")
+	ddl = fmt.Sprintf("%s);", ddl)
+
+	return ddl
 }

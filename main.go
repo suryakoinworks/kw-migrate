@@ -20,8 +20,8 @@ import (
 const (
 	VERSION_MAJOR  = 10000
 	VERSION_MINOR  = 100
-	VERSION_PATCH  = 9
-	VERSION_STRING = "1.1.9"
+	VERSION_PATCH  = 11
+	VERSION_STRING = "1.1.11"
 )
 
 var (
@@ -102,102 +102,10 @@ func main() {
 			{
 				Name:        "up",
 				Aliases:     []string{"u"},
-				Description: "up [<db>] [<schema>] [--all-connection] [--all-schema]",
-				Flags: []cli.Flag{
-					&cli.BoolFlag{Name: "all-connection", Aliases: []string{"ac"}},
-					&cli.BoolFlag{Name: "all-schema", Aliases: []string{"as"}},
-				},
-				Usage: "Migration Up",
+				Description: "up [<db>] [<schema>]",
+				Usage:       "Migration Up",
 				Action: func(ctx *cli.Context) error {
 					config := kmt.Parse("Kwfile.yml")
-					if ctx.Bool("all-connection") {
-						for i, source := range config.Migrate.Connections {
-							if config.Migrate.Source == i {
-								continue
-							}
-
-							db, err := kmt.Connect(source)
-							if err != nil {
-								return err
-							}
-
-							for k := range config.Migrate.Schemas {
-								_, err = db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", k))
-								if err != nil {
-									return err
-								}
-
-								progress := spinner.New(spinner.CharSets[spinerIndex], duration)
-								progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", i, k)
-								progress.Start()
-
-								migrator := migrate.NewMigrator(db, source.Name, k, fmt.Sprintf("%s/%s", config.Migrate.Folder, k))
-								err = migrator.Up()
-								if err == nil || err == gomigrate.ErrNoChange {
-									progress.Stop()
-
-									return nil
-								}
-
-								version, dirty, _ := migrator.Version()
-								if version != 0 && dirty {
-									migrator.Force(int(version))
-									migrator.Steps(-1)
-								}
-
-								progress.Stop()
-							}
-						}
-
-						return nil
-					}
-
-					if ctx.Bool("all-schema") {
-						if ctx.NArg() != 1 {
-							return errors.New("not enough arguments. Usage: kmt up <db> --all-schema")
-						}
-
-						source := ctx.Args().Get(0)
-						dbConfig, ok := config.Migrate.Connections[source]
-						if !ok {
-							return fmt.Errorf("database connection '%s' not found", source)
-						}
-
-						db, err := kmt.Connect(dbConfig)
-						if err != nil {
-							return err
-						}
-
-						for k := range config.Migrate.Schemas {
-							_, err = db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", k))
-							if err != nil {
-								return err
-							}
-
-							progress := spinner.New(spinner.CharSets[spinerIndex], duration)
-							progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", source, k)
-							progress.Start()
-
-							migrator := migrate.NewMigrator(db, dbConfig.Name, k, fmt.Sprintf("%s/%s", config.Migrate.Folder, k))
-							err = migrator.Up()
-							if err == nil || err == gomigrate.ErrNoChange {
-								progress.Stop()
-
-								return nil
-							}
-
-							version, dirty, _ := migrator.Version()
-							if version != 0 && dirty {
-								migrator.Force(int(version))
-								migrator.Steps(-1)
-							}
-
-							progress.Stop()
-						}
-
-						return nil
-					}
-
 					if ctx.NArg() != 2 {
 						return errors.New("not enough arguments. Usage: kmt up <db> <schema>")
 					}
@@ -212,49 +120,6 @@ func main() {
 					db, err := kmt.Connect(dbConfig)
 					if err != nil {
 						return err
-					}
-
-					if ctx.Args().Get(1) == "init" {
-						progress := spinner.New(spinner.CharSets[spinerIndex], duration)
-						progress.Suffix = "Run init scripts"
-						progress.Start()
-
-						for k := range config.Migrate.Schemas {
-							_, err = db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", k))
-							if err != nil {
-								progress.Stop()
-
-								return err
-							}
-						}
-
-						dir := fmt.Sprintf("%s/init", config.Migrate.Folder)
-						files, err := os.ReadDir(dir)
-						if err != nil {
-							progress.Stop()
-
-							return err
-						}
-
-						for _, file := range files {
-							sql, err := os.ReadFile(fmt.Sprintf("%s/%s", dir, file.Name()))
-							if err != nil {
-								progress.Stop()
-
-								return err
-							}
-
-							_, err = db.Exec(string(sql))
-							if err != nil {
-								progress.Stop()
-
-								return err
-							}
-						}
-
-						progress.Stop()
-
-						return nil
 					}
 
 					schema := ctx.Args().Get(1)
@@ -603,15 +468,55 @@ func main() {
 							return errors.New("schema not found")
 						}
 
-						config.Migrate.Schemas[schema]["tables"] = migrate.NewSchema(db, schema).ListTables(config.Migrate.Schemas[schema]["excludes"])
+						os.MkdirAll(fmt.Sprintf("%s/%s", config.Migrate.Folder, schema), 0777)
 
-						ddl := migrate.NewDdl(config.Migrate.PgDump, source)
 						version := time.Now().Unix()
+						schemaTool := migrate.NewSchema(db, schema)
+
+						udts := schemaTool.ListUDT()
+						for _, s := range udts {
+							err := os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.up.sql", config.Migrate.Folder, schema, version, s.Name), []byte(s.UpScript), 0777)
+							if err != nil {
+								progress.Stop()
+
+								return err
+							}
+
+							err = os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.down.sql", config.Migrate.Folder, schema, version, s.Name), []byte(s.DownScript), 0777)
+							if err != nil {
+								progress.Stop()
+
+								return err
+							}
+
+							version++
+						}
+
+						functions := schemaTool.ListFunction()
+						for _, s := range functions {
+							err := os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.up.sql", config.Migrate.Folder, schema, version, s.Name), []byte(s.UpScript), 0777)
+							if err != nil {
+								progress.Stop()
+
+								return err
+							}
+
+							err = os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.down.sql", config.Migrate.Folder, schema, version, s.Name), []byte(s.DownScript), 0777)
+							if err != nil {
+								progress.Stop()
+
+								return err
+							}
+
+							version++
+						}
+
+						config.Migrate.Schemas[schema]["tables"] = schemaTool.ListTables(config.Migrate.Schemas[schema]["excludes"])
+
+						ddlTool := migrate.NewDdl(config.Migrate.PgDump, source)
 
 						scripts := map[string]map[string]migrate.Script{}
 						scripts[schema] = map[string]migrate.Script{}
-
-						os.MkdirAll(fmt.Sprintf("%s/%s", config.Migrate.Folder, schema), 0777)
 
 						tlen := len(config.Migrate.Schemas[schema]["tables"])
 						for j, t := range config.Migrate.Schemas[schema]["tables"] {
@@ -629,7 +534,7 @@ func main() {
 								}
 							}
 
-							script := ddl.Generate(fmt.Sprintf("%s.%s", schema, t), schemaOnly)
+							script := ddlTool.Generate(fmt.Sprintf("%s.%s", schema, t), schemaOnly)
 							scripts[schema][script.Table] = script
 
 							err := os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.up.sql", config.Migrate.Folder, schema, version, t), []byte(script.UpScript), 0777)
@@ -695,13 +600,59 @@ func main() {
 
 						}
 
+						progress.Stop()
+
 						return nil
 					}
 
 					progress := spinner.New(spinner.CharSets[spinerIndex], duration)
 					progress.Suffix = " Listing tables from schemas... "
 					progress.Start()
+					version := time.Now().Unix()
+
 					for k, v := range config.Migrate.Schemas {
+						os.MkdirAll(fmt.Sprintf("%s/%s", config.Migrate.Folder, k), 0777)
+
+						schemaTool := migrate.NewSchema(db, k)
+
+						udts := schemaTool.ListUDT()
+						for _, s := range udts {
+							err := os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.up.sql", config.Migrate.Folder, k, version, s.Name), []byte(s.UpScript), 0777)
+							if err != nil {
+								progress.Stop()
+
+								return err
+							}
+
+							err = os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.down.sql", config.Migrate.Folder, k, version, s.Name), []byte(s.DownScript), 0777)
+							if err != nil {
+								progress.Stop()
+
+								return err
+							}
+
+							version++
+						}
+
+						functions := schemaTool.ListFunction()
+						for _, s := range functions {
+							err := os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.up.sql", config.Migrate.Folder, k, version, s.Name), []byte(s.UpScript), 0777)
+							if err != nil {
+								progress.Stop()
+
+								return err
+							}
+
+							err = os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.down.sql", config.Migrate.Folder, k, version, s.Name), []byte(s.DownScript), 0777)
+							if err != nil {
+								progress.Stop()
+
+								return err
+							}
+
+							version++
+						}
+
 						config.Migrate.Schemas[k]["tables"] = migrate.NewSchema(db, k).ListTables(v["excludes"])
 					}
 
@@ -710,14 +661,12 @@ func main() {
 					progress.Suffix = " Generating migration files... "
 					progress.Start()
 
-					ddl := migrate.NewDdl(config.Migrate.PgDump, source)
+					ddlTool := migrate.NewDdl(config.Migrate.PgDump, source)
 					slen := len(config.Migrate.Schemas)
 					i := 1
-					version := time.Now().Unix()
+
 					scripts := map[string]map[string]migrate.Script{}
 					for k, v := range config.Migrate.Schemas {
-						os.MkdirAll(fmt.Sprintf("%s/%s", config.Migrate.Folder, k), 0777)
-
 						scripts[k] = map[string]migrate.Script{}
 						schema := color.New(color.FgGreen).Sprint(k)
 						tlen := len(v["tables"])
@@ -736,7 +685,7 @@ func main() {
 								}
 							}
 
-							script := ddl.Generate(fmt.Sprintf("%s.%s", k, t), schemaOnly)
+							script := ddlTool.Generate(fmt.Sprintf("%s.%s", k, t), schemaOnly)
 							scripts[k][script.Table] = script
 
 							err := os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.up.sql", config.Migrate.Folder, k, version, t), []byte(script.UpScript), 0777)

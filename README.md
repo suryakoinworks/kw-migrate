@@ -91,6 +91,14 @@ migrate:
 
 - Create new migration or generate from `source`
 
-## Limitation
+## TODO
 
-- `kmt generate` command run use `--table` option, features like UDT, functions, etc doesn't imported
+- [x] Migrate tables
+
+- [x] Migrate enums (UDT)
+
+- [x] Migrate functions
+
+- [ ] Migrate views
+
+- [ ] Migrate materialized views
