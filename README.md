@@ -94,11 +94,10 @@ migrate:
 ## TODO
 
 - [x] Migrate tables
-
 - [x] Migrate enums (UDT)
-
 - [x] Migrate functions
-
 - [ ] Migrate views
-
 - [ ] Migrate materialized views
+- [ ] Show State/Compare
+- [ ] Upgrade Command
+- [ ] Refactor Codes
