@@ -67,4 +67,13 @@ SELECT
 FROM information_schema.views
 WHERE table_schema = '%s'
 ORDER BY table_name;`
+
+	QUERY_MATERIALIZED_VIEW = `
+SELECT
+    matviewname AS view_name,
+    definition AS definition
+FROM pg_matviews
+WHERE schema_name = '%s'
+ORDER BY schemaname,
+    view_name;`
 )

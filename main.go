@@ -294,7 +294,6 @@ func main() {
 				Action: func(ctx *cli.Context) error {
 					gColor := color.New(color.FgGreen)
 
-					fmt.Printf("VersionID: %s\n", gColor.Sprint(config.VERSION_MAJOR+config.VERSION_MINOR+config.VERSION_PATCH))
 					fmt.Printf("Version: %s\n\n", gColor.Sprint(config.VERSION_STRING))
 					fmt.Printf("Author: %s<surya.iksanudi@koinworks.com>\n", gColor.Sprint("Muhamad Surya Iksanudin"))
 

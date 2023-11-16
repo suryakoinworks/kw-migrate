@@ -47,10 +47,8 @@ func (u upgrade) Call() error {
 		return nil
 	}
 
-	var (
-		latest string
-		when   = time.Now().AddDate(-3, 0, 0)
-	)
+	var latest string
+	var when = time.Now().AddDate(-3, 0, 0)
 
 	tags, err := repository.TagObjects()
 	if err != nil {

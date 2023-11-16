@@ -97,7 +97,7 @@ migration:
 - [x] Migrate enums (UDT)
 - [x] Migrate functions
 - [x] Migrate views
-- [ ] Migrate materialized views
+- [x] Migrate materialized views
 - [x] Show migration version
 - [x] Show State/Compare
 - [x] Upgrade Command

@@ -113,6 +113,29 @@ func (g generate) Call(schema string) error {
 		version++
 	}
 
+	mViews := db.NewView(g.connection).GenerateDdl(schema)
+	for _, s := range mViews {
+		err := os.WriteFile(fmt.Sprintf("%s/%s/%d_materialized_view_%s.up.sql", g.config.Folder, schema, version, s.Name), []byte(s.UpScript), 0777)
+		if err != nil {
+			progress.Stop()
+
+			g.errorColor.Println(err.Error())
+
+			return nil
+		}
+
+		err = os.WriteFile(fmt.Sprintf("%s/%s/%d_materialized_view_%s.down.sql", g.config.Folder, schema, version, s.Name), []byte(s.DownScript), 0777)
+		if err != nil {
+			progress.Stop()
+
+			g.errorColor.Println(err.Error())
+
+			return nil
+		}
+
+		version++
+	}
+
 	source, ok := g.config.Connections[g.config.Source]
 	if !ok {
 		g.errorColor.Printf("Config for '%s' not found", g.config.Source)
