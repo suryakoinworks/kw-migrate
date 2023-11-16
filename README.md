@@ -57,7 +57,7 @@ Run `kmt --help` for complete commands
 ```yaml
 version: 1.0
 
-migrate:
+migration:
     pg_dump: /usr/bin/pg_dump
     folder: migrations
     source: default
@@ -100,4 +100,4 @@ migrate:
 - [ ] Migrate materialized views
 - [ ] Show State/Compare
 - [ ] Upgrade Command
-- [ ] Refactor Codes
+- [x] Refactor Codes

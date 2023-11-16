@@ -1,6 +1,6 @@
 version: 1.0
 
-migrate:
+migration:
   pg_dump: /usr/bin/pg_dump
   folder: migrations
   source: default
