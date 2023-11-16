@@ -4,7 +4,7 @@ Manage postgresql cluster migration easly
 
 ## Requirements
 
-- Go 1.17 or above
+- Go 1.16 or above
 
 - `pg_dump` (optional) to support reverse migration
 
@@ -22,7 +22,7 @@ Manage postgresql cluster migration easly
 
 - Download dependencies `cd kmt && go get && go mod tidy`
 
-- Build `go build`
+- Build `go build -o kmt`
 
 - Run `mv kmt /usr/local/bin/kmt`
 
@@ -96,8 +96,9 @@ migration:
 - [x] Migrate tables
 - [x] Migrate enums (UDT)
 - [x] Migrate functions
-- [ ] Migrate views
+- [x] Migrate views
 - [ ] Migrate materialized views
-- [ ] Show State/Compare
-- [ ] Upgrade Command
+- [x] Show migration version
+- [x] Show State/Compare
+- [x] Upgrade Command
 - [x] Refactor Codes

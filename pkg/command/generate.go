@@ -46,7 +46,7 @@ func (g generate) Call(schema string) error {
 
 	udts := db.NewEnum(g.connection).GenerateDdl(schema)
 	for _, s := range udts {
-		err := os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.up.sql", g.config.Folder, schema, version, s.Name), []byte(s.UpScript), 0777)
+		err := os.WriteFile(fmt.Sprintf("%s/%s/%d_enum_%s.up.sql", g.config.Folder, schema, version, s.Name), []byte(s.UpScript), 0777)
 		if err != nil {
 			progress.Stop()
 
@@ -55,7 +55,7 @@ func (g generate) Call(schema string) error {
 			return nil
 		}
 
-		err = os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.down.sql", g.config.Folder, schema, version, s.Name), []byte(s.DownScript), 0777)
+		err = os.WriteFile(fmt.Sprintf("%s/%s/%d_enum_%s.down.sql", g.config.Folder, schema, version, s.Name), []byte(s.DownScript), 0777)
 		if err != nil {
 			progress.Stop()
 
@@ -69,7 +69,7 @@ func (g generate) Call(schema string) error {
 
 	functions := db.NewFunction(g.connection).GenerateDdl(schema)
 	for _, s := range functions {
-		err := os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.up.sql", g.config.Folder, schema, version, s.Name), []byte(s.UpScript), 0777)
+		err := os.WriteFile(fmt.Sprintf("%s/%s/%d_function_%s.up.sql", g.config.Folder, schema, version, s.Name), []byte(s.UpScript), 0777)
 		if err != nil {
 			progress.Stop()
 
@@ -78,7 +78,30 @@ func (g generate) Call(schema string) error {
 			return nil
 		}
 
-		err = os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.down.sql", g.config.Folder, schema, version, s.Name), []byte(s.DownScript), 0777)
+		err = os.WriteFile(fmt.Sprintf("%s/%s/%d_function_%s.down.sql", g.config.Folder, schema, version, s.Name), []byte(s.DownScript), 0777)
+		if err != nil {
+			progress.Stop()
+
+			g.errorColor.Println(err.Error())
+
+			return nil
+		}
+
+		version++
+	}
+
+	views := db.NewView(g.connection).GenerateDdl(schema)
+	for _, s := range views {
+		err := os.WriteFile(fmt.Sprintf("%s/%s/%d_view_%s.up.sql", g.config.Folder, schema, version, s.Name), []byte(s.UpScript), 0777)
+		if err != nil {
+			progress.Stop()
+
+			g.errorColor.Println(err.Error())
+
+			return nil
+		}
+
+		err = os.WriteFile(fmt.Sprintf("%s/%s/%d_view_%s.down.sql", g.config.Folder, schema, version, s.Name), []byte(s.DownScript), 0777)
 		if err != nil {
 			progress.Stop()
 
@@ -123,7 +146,7 @@ func (g generate) Call(schema string) error {
 		script := ddlTool.Generate(fmt.Sprintf("%s.%s", schema, t), schemaOnly)
 		scripts[schema][script.Name] = script
 
-		err := os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.up.sql", g.config.Folder, schema, version, t), []byte(script.Definition.UpScript), 0777)
+		err := os.WriteFile(fmt.Sprintf("%s/%s/%d_table_%s.up.sql", g.config.Folder, schema, version, t), []byte(script.Definition.UpScript), 0777)
 		if err != nil {
 			progress.Stop()
 
@@ -132,7 +155,7 @@ func (g generate) Call(schema string) error {
 			return nil
 		}
 
-		err = os.WriteFile(fmt.Sprintf("%s/%s/%d_create_%s.down.sql", g.config.Folder, schema, version, t), []byte(script.Definition.DownScript), 0777)
+		err = os.WriteFile(fmt.Sprintf("%s/%s/%d_table_%s.down.sql", g.config.Folder, schema, version, t), []byte(script.Definition.DownScript), 0777)
 		if err != nil {
 			progress.Stop()
 

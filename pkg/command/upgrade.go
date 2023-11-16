@@ -1,0 +1,141 @@
+package command
+
+import (
+	"fmt"
+	"kmt/pkg/config"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/briandowns/spinner"
+	"github.com/fatih/color"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
+)
+
+type upgrade struct {
+	errorColor   *color.Color
+	successColor *color.Color
+}
+
+func NewUpgrade(errorColor *color.Color, successColor *color.Color) upgrade {
+	return upgrade{
+		errorColor:   errorColor,
+		successColor: successColor,
+	}
+}
+
+func (u upgrade) Call() error {
+	temp := strings.TrimSuffix(os.TempDir(), "/")
+	wd := fmt.Sprintf("%s/kmt", temp)
+	os.RemoveAll(wd)
+
+	progress := spinner.New(spinner.CharSets[config.SPINER_INDEX], config.SPINER_DURATION)
+	progress.Suffix = " Checking new update... "
+	progress.Start()
+
+	repository, err := git.PlainClone(wd, false, &git.CloneOptions{
+		URL:   "https://github.com/suryakoinworks/kw-migrate.git",
+		Depth: 1,
+	})
+	if err != nil {
+		progress.Stop()
+		u.errorColor.Println(err)
+
+		return nil
+	}
+
+	var (
+		latest string
+		when   = time.Now().AddDate(-3, 0, 0)
+	)
+
+	tags, err := repository.TagObjects()
+	if err != nil {
+		progress.Stop()
+		u.errorColor.Println(err)
+
+		return nil
+	}
+
+	_ = tags.ForEach(func(t *object.Tag) error {
+		if when.Before(t.Tagger.When) {
+			when = t.Tagger.When
+			latest = t.Name
+		}
+
+		return nil
+	})
+
+	if latest == config.VERSION_STRING {
+		progress.Stop()
+		u.successColor.Println("KMT is already up to date")
+
+		return nil
+	}
+
+	progress.Stop()
+
+	progress.Suffix = " Updating KMT... "
+	progress.Start()
+
+	cmd := exec.Command("git", "checkout", latest)
+	cmd.Dir = wd
+	err = cmd.Run()
+	if err != nil {
+		progress.Stop()
+		u.errorColor.Println("Error checkout to latest tag")
+
+		return nil
+	}
+
+	cmd = exec.Command("go", "get")
+	cmd.Dir = wd
+	_ = cmd.Run()
+
+	cmd = exec.Command("go", "build", "-o", "kmt")
+	cmd.Dir = wd
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		progress.Stop()
+		u.errorColor.Println(string(output))
+
+		return err
+	}
+
+	binPath := os.Getenv("GOBIN")
+	if binPath == "" {
+		binPath = fmt.Sprintf("%s/bin", os.Getenv("GOPATH"))
+	}
+
+	if binPath == "" {
+		output, err := exec.Command("which", "go").CombinedOutput()
+		if err != nil {
+			u.errorColor.Println(string(output))
+
+			return err
+		}
+
+		binPath = strings.TrimSuffix(filepath.Dir(string(output)), "/")
+	}
+
+	cmd = exec.Command("mv", "kmt", fmt.Sprintf("%s/kmt", binPath))
+	cmd.Dir = wd
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		progress.Stop()
+		u.errorColor.Println(string(output))
+
+		return err
+	}
+
+	progress.Stop()
+	u.successColor.Print("KMT has been upgraded to ")
+	color.New(color.FgGreen, color.Bold).Println(latest)
+
+	os.RemoveAll(wd)
+
+	return nil
+}

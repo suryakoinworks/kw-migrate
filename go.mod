@@ -1,24 +1,21 @@
 module kmt
 
-go 1.17
+go 1.16
 
 require (
-	github.com/briandowns/spinner v1.19.0
-	github.com/fatih/color v1.13.0
-	github.com/golang-migrate/migrate/v4 v4.15.2
-	github.com/lib/pq v1.10.7
-	github.com/urfave/cli/v2 v2.11.2
+	github.com/briandowns/spinner v1.23.0
+	github.com/fatih/color v1.16.0
+	github.com/golang-migrate/migrate/v4 v4.16.2
+	github.com/lib/pq v1.10.9
+	github.com/urfave/cli/v2 v2.25.7
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
-	github.com/hashicorp/errwrap v1.1.0 // indirect
-	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.16 // indirect
-	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
-	go.uber.org/atomic v1.7.0 // indirect
-	golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
+	github.com/go-git/go-git/v5 v5.10.0
+	github.com/jedib0t/go-pretty/v6 v6.4.9
+	go.uber.org/atomic v1.11.0 // indirect
+	golang.org/x/term v0.14.0 // indirect
+	golang.org/x/text v0.13.0
 )

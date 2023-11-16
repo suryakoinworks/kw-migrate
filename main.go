@@ -10,7 +10,10 @@ import (
 	"strconv"
 
 	"github.com/fatih/color"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 func main() {
@@ -172,6 +175,98 @@ func main() {
 				},
 			},
 			{
+				Name:        "version",
+				Aliases:     []string{"version"},
+				Description: "version <db> [<schema>]",
+				Usage:       "Show migration version",
+				Action: func(ctx *cli.Context) error {
+					if ctx.NArg() < 1 {
+						return errors.New("not enough arguments. Usage: kmt version <db> [<schema>]")
+					}
+
+					config := config.Parse("Kwfile.yml")
+					cmd := command.NewVersion(config.Migration, color.New(color.FgRed), color.New(color.FgGreen))
+
+					t := table.NewWriter()
+					t.SetOutputMirror(os.Stdout)
+					t.AppendHeader(table.Row{"#", "Connection", "Schema", "Version"})
+
+					if ctx.NArg() == 2 {
+						db := ctx.Args().Get(0)
+						schema := ctx.Args().Get(1)
+						version := cmd.Call(db, schema)
+
+						t.AppendRows([]table.Row{
+							{1, db, schema, version},
+						})
+						t.Render()
+
+						return nil
+					}
+
+					db := ctx.Args().Get(0)
+					for k := range config.Migration.Schemas {
+						version := cmd.Call(db, k)
+
+						t.AppendRows([]table.Row{
+							{1, db, k, version},
+						})
+					}
+
+					t.Render()
+
+					return nil
+				},
+			},
+			{
+				Name:        "compare",
+				Aliases:     []string{"compare"},
+				Description: "compare <source> <compare> [<schema>]",
+				Usage:       "Show migration version comparation",
+				Action: func(ctx *cli.Context) error {
+					if ctx.NArg() < 2 {
+						return errors.New("not enough arguments. Usage: kmt compare <source> <compare> [<schema>]")
+					}
+
+					config := config.Parse("Kwfile.yml")
+					cmd := command.NewCompare(config.Migration, color.New(color.FgRed), color.New(color.FgGreen))
+
+					t := table.NewWriter()
+					t.SetOutputMirror(os.Stdout)
+
+					c := cases.Title(language.Indonesian)
+
+					source := ctx.Args().Get(0)
+					compare := ctx.Args().Get(1)
+
+					t.AppendHeader(table.Row{"#", "Schema", fmt.Sprintf("%s Version", c.String(source)), fmt.Sprintf("%s Version", c.String(compare))})
+
+					if ctx.NArg() == 3 {
+						schema := ctx.Args().Get(2)
+						vSource, vCompare := cmd.Call(source, compare, schema)
+
+						t.AppendRows([]table.Row{
+							{1, schema, vSource, vCompare},
+						})
+						t.Render()
+
+						return nil
+					}
+
+					for k := range config.Migration.Schemas {
+						vSource, vCompare := cmd.Call(source, compare, k)
+
+						t.AppendRows([]table.Row{
+							{1, k, vSource, vCompare},
+						})
+					}
+
+					t.Render()
+
+					return nil
+				},
+			},
+			{
 				Name:        "test",
 				Aliases:     []string{"test"},
 				Description: "test",
@@ -183,10 +278,19 @@ func main() {
 				},
 			},
 			{
-				Name:        "version",
-				Aliases:     []string{"version"},
-				Description: "version",
-				Usage:       "Show kmt version",
+				Name:        "upgrade",
+				Aliases:     []string{"upgrade"},
+				Description: "upgrade",
+				Usage:       "Upgrade kmt to latest version",
+				Action: func(ctx *cli.Context) error {
+					return command.NewUpgrade(color.New(color.FgRed), color.New(color.FgGreen)).Call()
+				},
+			},
+			{
+				Name:        "about",
+				Aliases:     []string{"about"},
+				Description: "about",
+				Usage:       "Show kmt profile",
 				Action: func(ctx *cli.Context) error {
 					gColor := color.New(color.FgGreen)
 

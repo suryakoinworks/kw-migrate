@@ -54,9 +54,17 @@ ORDER BY name;`
 
 	QUERY_LIST_TABLE = `
 SELECT
-    LOWER(table_name) as table_name
+    LOWER(table_name) AS table_name
 FROM information_schema.tables
 WHERE table_type='BASE TABLE'
     AND table_schema='%s'
+ORDER BY table_name;`
+
+	QUERY_LIST_VIEW = `
+SELECT
+    COALESCE(table_name, '') AS view_name,
+    COALESCE(view_definition, '') AS definition
+FROM information_schema.views
+WHERE table_schema = '%s'
 ORDER BY table_name;`
 )
