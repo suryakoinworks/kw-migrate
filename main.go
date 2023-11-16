@@ -142,7 +142,7 @@ func main() {
 
 					config := config.Parse("Kwfile.yml")
 
-					return command.NewClean(config.Migration, color.New(color.FgRed), color.New(color.FgGreen)).Call(ctx.Args().Get(0), ctx.Args().Get(1))
+					return command.NewCreate(config.Migration, color.New(color.FgRed), color.New(color.FgGreen)).Call(ctx.Args().Get(0), ctx.Args().Get(1))
 				},
 			},
 			{
