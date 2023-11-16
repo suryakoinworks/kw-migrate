@@ -12,8 +12,6 @@ import (
 	"github.com/fatih/color"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 func main() {
@@ -234,12 +232,10 @@ func main() {
 					t := table.NewWriter()
 					t.SetOutputMirror(os.Stdout)
 
-					c := cases.Title(language.Indonesian)
-
 					source := ctx.Args().Get(0)
 					compare := ctx.Args().Get(1)
 
-					t.AppendHeader(table.Row{"#", "Schema", fmt.Sprintf("%s Version", c.String(source)), fmt.Sprintf("%s Version", c.String(compare))})
+					t.AppendHeader(table.Row{"#", "Schema", fmt.Sprintf("%s Version", source), fmt.Sprintf("%s Version", compare)})
 
 					if ctx.NArg() == 3 {
 						schema := ctx.Args().Get(2)

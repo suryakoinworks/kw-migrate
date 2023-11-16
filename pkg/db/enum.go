@@ -51,14 +51,14 @@ func (s enum) GenerateDdl(schema string) []migration {
 }
 
 func (s enum) createDdl(name string, values string) string {
-	ddl := fmt.Sprintf("CREATE TYPE %s AS ENUM (", name)
+	ddl := fmt.Sprintf(SQL_CREATE_ENUM_OPEN, name)
 
 	for _, s := range strings.Split(values, "#") {
-		ddl = fmt.Sprintf("%s '%s',", ddl, s)
+		ddl = fmt.Sprintf("%s'%s',", ddl, s)
 	}
 
 	ddl = strings.TrimRight(ddl, ",")
-	ddl = fmt.Sprintf("%s);", ddl)
+	ddl = fmt.Sprintf(SQL_CREATE_ENUM_CLOSE, ddl)
 
 	return ddl
 }

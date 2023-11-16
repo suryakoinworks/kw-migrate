@@ -13,6 +13,16 @@ type (
 )
 
 const (
+	SQL_CREATE_ENUM_OPEN = `
+DO $$ BEGIN
+    CREATE TYPE %s AS ENUM (`
+
+	SQL_CREATE_ENUM_CLOSE = `%s);
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+    `
+
 	QUERY_LIST_FUNCTION = `
 SELECT
     p.proname AS function_name,
