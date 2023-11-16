@@ -43,7 +43,7 @@ func (s enum) GenerateDdl(schema string) []migration {
 		udts = append(udts, migration{
 			Name:       shortName,
 			UpScript:   s.createDdl(name, values),
-			DownScript: fmt.Sprintf("DROP TYPE %s;", name),
+			DownScript: fmt.Sprintf("DROP TYPE IF EXISTS %s;", name),
 		})
 	}
 

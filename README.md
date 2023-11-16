@@ -4,6 +4,8 @@ Manage postgresql cluster migration easly
 
 ## Requirements
 
+- Postgresql 9.5 or above
+
 - Go 1.16 or above
 
 - `pg_dump` (optional) to support reverse migration

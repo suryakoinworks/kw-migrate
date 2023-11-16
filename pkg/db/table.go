@@ -37,6 +37,7 @@ func (t table) Generate(name string, schemaOnly bool) Ddl {
 		"--no-tablespaces",
 		"--no-unlogged-table-data",
 		"--no-owner",
+		"--if-exists",
 		"--no-privileges",
 		"--no-blobs",
 		"--clean",
@@ -103,7 +104,7 @@ func (t table) Generate(name string, schemaOnly bool) Ddl {
 	return Ddl{
 		Name: name,
 		Definition: migration{
-			UpScript:   strings.Join(upScript, "\n"),
+			UpScript:   strings.Replace(strings.Replace(strings.Join(upScript, "\n"), "CREATE TABLE", "CREATE TABLE IF EXISTS", -1), "CREATE SEQUENCE", "CREATE SEQUENCE IF EXISTS", -1),
 			DownScript: strings.Join(downScript, "\n"),
 		},
 		Reference: migration{
