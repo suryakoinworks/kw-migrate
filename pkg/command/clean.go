@@ -51,7 +51,7 @@ func (c clean) Call(source string, schema string) error {
 		migrator.Steps(-1)
 	}
 
-	c.successColor.Println("Migration cleaned")
+	c.successColor.Printf("Migration cleaned on %s schema %s\n", source, schema)
 
 	return err
 }

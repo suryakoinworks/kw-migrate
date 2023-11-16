@@ -55,5 +55,7 @@ func (r run) Call(source string, schema string, step int) error {
 		r.errorColor.Println(err.Error())
 	}
 
+	r.successColor.Printf("Migration on %s schema %s run successfully\n", source, schema)
+
 	return nil
 }

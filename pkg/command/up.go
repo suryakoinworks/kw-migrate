@@ -75,7 +75,7 @@ func (u up) Call(source string, schema string) error {
 
 	progress.Stop()
 
-	u.successColor.Println("Migration run successfully")
+	u.successColor.Printf("Migration on %s schema %s run successfully\n", source, schema)
 
 	return err
 }

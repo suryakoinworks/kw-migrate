@@ -76,7 +76,7 @@ func (s sync) Run(cluster string, schema string) error {
 		progress.Stop()
 	}
 
-	s.successColor.Println("Migration run successfully")
+	s.successColor.Printf("Migration synced on %s schema %s\n", cluster, schema)
 
 	return nil
 }

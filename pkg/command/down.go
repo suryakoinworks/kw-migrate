@@ -68,7 +68,7 @@ func (d down) Call(source string, schema string) error {
 
 	progress.Stop()
 
-	d.successColor.Println("Migration down successfully")
+	d.successColor.Printf("Migration on %s schema %s down successfully\n", source, schema)
 
 	return err
 }

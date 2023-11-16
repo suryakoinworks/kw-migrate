@@ -246,5 +246,7 @@ func (g generate) Call(schema string) error {
 
 	progress.Stop()
 
+	g.successColor.Printf("Migration generation on schema %s run successfully\n", schema)
+
 	return nil
 }
