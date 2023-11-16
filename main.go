@@ -290,8 +290,8 @@ func main() {
 				Action: func(ctx *cli.Context) error {
 					gColor := color.New(color.FgGreen)
 
-					fmt.Printf("Version: %s\n\n", gColor.Sprint(config.VERSION_STRING))
-					fmt.Printf("Author: %s<surya.iksanudi@koinworks.com>\n", gColor.Sprint("Muhamad Surya Iksanudin"))
+					fmt.Printf("%s\n\n", gColor.Sprintf("Koinworks Migration Tool (KMT) - %s", config.VERSION_STRING))
+					fmt.Printf("%s<surya.iksanudi@koinworks.com>\n", gColor.Sprint("Muhamad Surya Iksanudin"))
 
 					return nil
 				},
