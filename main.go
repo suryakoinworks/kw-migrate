@@ -238,14 +238,14 @@ func main() {
 					source := ctx.Args().Get(0)
 					compare := ctx.Args().Get(1)
 
-					t.AppendHeader(table.Row{"No", "Schema", fmt.Sprintf("%s Version", source), fmt.Sprintf("%s Version", compare)})
+					t.AppendHeader(table.Row{"No", "Schema", fmt.Sprintf("%s Version", source), fmt.Sprintf("%s Version", compare), "Sync"})
 
 					if ctx.NArg() == 3 {
 						schema := ctx.Args().Get(2)
 						vSource, vCompare := cmd.Call(source, compare, schema)
 
 						t.AppendRows([]table.Row{
-							{1, schema, vSource, vCompare},
+							{1, schema, vSource, vCompare, vSource == vCompare},
 						})
 						t.Render()
 
@@ -257,7 +257,7 @@ func main() {
 						vSource, vCompare := cmd.Call(source, compare, k)
 
 						t.AppendRows([]table.Row{
-							{number, k, vSource, vCompare},
+							{number, k, vSource, vCompare, vSource == vCompare},
 						})
 
 						number++
