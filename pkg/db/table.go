@@ -104,7 +104,7 @@ func (t table) Generate(name string, schemaOnly bool) Ddl {
 	return Ddl{
 		Name: name,
 		Definition: migration{
-			UpScript:   strings.Replace(strings.Replace(strings.Join(upScript, "\n"), "CREATE TABLE", "CREATE TABLE IF EXISTS", -1), "CREATE SEQUENCE", "CREATE SEQUENCE IF EXISTS", -1),
+			UpScript:   strings.Replace(strings.Replace(strings.Join(upScript, "\n"), "CREATE TABLE", "CREATE TABLE IF NOT EXISTS", -1), "CREATE SEQUENCE", "CREATE SEQUENCE IF NOT EXISTS", -1),
 			DownScript: strings.Join(downScript, "\n"),
 		},
 		Reference: migration{
