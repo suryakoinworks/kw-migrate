@@ -17,14 +17,14 @@ import (
 func main() {
 	app := &cli.App{
 		Name:                   "kmt",
-		Usage:                  "Koinworks Migration Tool",
+		Usage:                  "Koinworks Migration Tool (KMT)",
 		Description:            "kmt help",
 		EnableBashCompletion:   true,
 		UseShortOptionHandling: true,
 		Commands: []*cli.Command{
 			{
 				Name:        "sync",
-				Aliases:     []string{"syc"},
+				Aliases:     []string{"sy"},
 				Description: "sync <cluster> <schema>",
 				Usage:       "Cluster Sync",
 				Action: func(ctx *cli.Context) error {
@@ -39,7 +39,7 @@ func main() {
 			},
 			{
 				Name:        "up",
-				Aliases:     []string{"u"},
+				Aliases:     []string{"up"},
 				Description: "up <db> <schema>",
 				Usage:       "Migration Up",
 				Action: func(ctx *cli.Context) error {
@@ -100,7 +100,7 @@ func main() {
 			},
 			{
 				Name:        "down",
-				Aliases:     []string{"dwn"},
+				Aliases:     []string{"dw"},
 				Description: "down <db> <schema>",
 				Usage:       "Migration Down",
 				Action: func(ctx *cli.Context) error {
@@ -115,7 +115,7 @@ func main() {
 			},
 			{
 				Name:        "clean",
-				Aliases:     []string{"cln"},
+				Aliases:     []string{"cl"},
 				Description: "clean <db> <schema>",
 				Usage:       "Clean dirty migration",
 				Action: func(ctx *cli.Context) error {
@@ -130,7 +130,7 @@ func main() {
 			},
 			{
 				Name:        "create",
-				Aliases:     []string{"crt"},
+				Aliases:     []string{"cr"},
 				Description: "create <schema> <name>",
 				Usage:       "Create New Migration  for Schema",
 				Action: func(ctx *cli.Context) error {
@@ -145,7 +145,7 @@ func main() {
 			},
 			{
 				Name:        "generate",
-				Aliases:     []string{"gen"},
+				Aliases:     []string{"gn"},
 				Description: "generate [<schema>]",
 				Usage:       "Generate Migration from Existing Database",
 				Action: func(ctx *cli.Context) error {
@@ -174,7 +174,7 @@ func main() {
 			},
 			{
 				Name:        "version",
-				Aliases:     []string{"version"},
+				Aliases:     []string{"v"},
 				Description: "version <db> [<schema>]",
 				Usage:       "Show migration version",
 				Action: func(ctx *cli.Context) error {
@@ -187,7 +187,7 @@ func main() {
 
 					t := table.NewWriter()
 					t.SetOutputMirror(os.Stdout)
-					t.AppendHeader(table.Row{"#", "Connection", "Schema", "Version"})
+					t.AppendHeader(table.Row{"No", "Connection", "Schema", "Version"})
 
 					if ctx.NArg() == 2 {
 						db := ctx.Args().Get(0)
@@ -202,13 +202,16 @@ func main() {
 						return nil
 					}
 
+					number := 1
 					db := ctx.Args().Get(0)
 					for k := range config.Migration.Schemas {
 						version := cmd.Call(db, k)
 
 						t.AppendRows([]table.Row{
-							{1, db, k, version},
+							{number, db, k, version},
 						})
+
+						number++
 					}
 
 					t.Render()
@@ -218,7 +221,7 @@ func main() {
 			},
 			{
 				Name:        "compare",
-				Aliases:     []string{"compare"},
+				Aliases:     []string{"c"},
 				Description: "compare <source> <compare> [<schema>]",
 				Usage:       "Show migration version comparation",
 				Action: func(ctx *cli.Context) error {
@@ -235,7 +238,7 @@ func main() {
 					source := ctx.Args().Get(0)
 					compare := ctx.Args().Get(1)
 
-					t.AppendHeader(table.Row{"#", "Schema", fmt.Sprintf("%s Version", source), fmt.Sprintf("%s Version", compare)})
+					t.AppendHeader(table.Row{"No", "Schema", fmt.Sprintf("%s Version", source), fmt.Sprintf("%s Version", compare)})
 
 					if ctx.NArg() == 3 {
 						schema := ctx.Args().Get(2)
@@ -249,12 +252,15 @@ func main() {
 						return nil
 					}
 
+					number := 1
 					for k := range config.Migration.Schemas {
 						vSource, vCompare := cmd.Call(source, compare, k)
 
 						t.AppendRows([]table.Row{
-							{1, k, vSource, vCompare},
+							{number, k, vSource, vCompare},
 						})
+
+						number++
 					}
 
 					t.Render()
@@ -264,7 +270,7 @@ func main() {
 			},
 			{
 				Name:        "test",
-				Aliases:     []string{"test"},
+				Aliases:     []string{"t"},
 				Description: "test",
 				Usage:       "Test kmt configuration",
 				Action: func(ctx *cli.Context) error {
@@ -284,7 +290,7 @@ func main() {
 			},
 			{
 				Name:        "about",
-				Aliases:     []string{"about"},
+				Aliases:     []string{"a"},
 				Description: "about",
 				Usage:       "Show kmt profile",
 				Action: func(ctx *cli.Context) error {
