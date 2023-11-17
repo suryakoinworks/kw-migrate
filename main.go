@@ -281,7 +281,7 @@ func main() {
 			},
 			{
 				Name:        "upgrade",
-				Aliases:     []string{"upgrade"},
+				Aliases:     []string{"u"},
 				Description: "upgrade",
 				Usage:       "Upgrade kmt to latest version",
 				Action: func(ctx *cli.Context) error {
