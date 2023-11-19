@@ -53,6 +53,8 @@ func (r rollback) Call(source string, schema string, step int) error {
 	err = migrator.Steps(step * -1)
 	if err != nil {
 		r.errorColor.Println(err.Error())
+
+		return nil
 	}
 
 	version, dirty, _ := migrator.Version()

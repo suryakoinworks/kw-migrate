@@ -37,7 +37,7 @@ func (u upgrade) Call() error {
 	progress.Start()
 
 	repository, err := git.PlainClone(wd, false, &git.CloneOptions{
-		URL:   "https://github.com/suryakoinworks/kw-migrate.git",
+		URL:   config.REPOSITORY,
 		Depth: 1,
 	})
 	if err != nil {

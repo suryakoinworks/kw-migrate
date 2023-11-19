@@ -53,6 +53,8 @@ func (r run) Call(source string, schema string, step int) error {
 	err = migrator.Steps(step)
 	if err != nil {
 		r.errorColor.Println(err.Error())
+
+		return nil
 	}
 
 	r.successColor.Printf("Migration on %s schema %s run successfully\n", source, schema)

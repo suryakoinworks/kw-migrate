@@ -34,21 +34,22 @@ func (c create) Call(schema string, name string) error {
 	os.MkdirAll(fmt.Sprintf("%s/%s", c.config.Folder, schema), 0777)
 
 	version := time.Now().Unix()
-	_, err := os.Create(fmt.Sprintf("%s/%s/%d_%s.up.sql", c.config.Folder, schema, version, name))
+	name = fmt.Sprintf("%d_%s", version, name)
+	_, err := os.Create(fmt.Sprintf("%s/%s/%s.up.sql", c.config.Folder, schema, name))
 	if err != nil {
 		c.errorColor.Println(err.Error())
 
 		return nil
 	}
 
-	_, err = os.Create(fmt.Sprintf("%s/%s/%d_%s.down.sql", c.config.Folder, schema, version, name))
+	_, err = os.Create(fmt.Sprintf("%s/%s/%s.down.sql", c.config.Folder, schema, name))
 	if err != nil {
 		c.errorColor.Println(err.Error())
 
 		return nil
 	}
 
-	c.successColor.Println("Migration created")
+	c.successColor.Printf("Migration created as %s\n", c.successColor.Sprintf(name))
 
 	return err
 }

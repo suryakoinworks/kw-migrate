@@ -271,7 +271,7 @@ func (g generate) Call(schema string) error {
 					return
 				}
 
-				err := os.WriteFile(fmt.Sprintf("%s/%s/%d_foreign_keys_%s.up.sql", g.config.Folder, schema, version, ddl.Name), []byte(c.ForeignKey.UpScript), 0777)
+				err := os.WriteFile(fmt.Sprintf("%s/%s/%d_foreign_keys_%s.up.sql", g.config.Folder, schema, version, ddl.Name), []byte(ddl.ForeignKey.UpScript), 0777)
 				if err != nil {
 					progress.Stop()
 
@@ -282,7 +282,7 @@ func (g generate) Call(schema string) error {
 					return
 				}
 
-				err = os.WriteFile(fmt.Sprintf("%s/%s/%d_foreign_keys_%s.down.sql", g.config.Folder, schema, version, ddl.Name), []byte(c.ForeignKey.DownScript), 0777)
+				err = os.WriteFile(fmt.Sprintf("%s/%s/%d_foreign_keys_%s.down.sql", g.config.Folder, schema, version, ddl.Name), []byte(ddl.ForeignKey.DownScript), 0777)
 				if err != nil {
 					progress.Stop()
 
