@@ -13,16 +13,16 @@ func NewFunction(db *sql.DB) function {
 	return function{db: db}
 }
 
-func (s function) GenerateDdl(schema string) []migration {
+func (s function) GenerateDdl(schema string) []Migration {
 	rows, err := s.db.Query(fmt.Sprintf(QUERY_LIST_FUNCTION, schema))
 	if err != nil {
 		fmt.Println(err.Error())
 
-		return []migration{}
+		return []Migration{}
 	}
 	defer rows.Close()
 
-	migrations := []migration{}
+	migrations := []Migration{}
 	for rows.Next() {
 		var name string
 		var definition string
@@ -34,7 +34,7 @@ func (s function) GenerateDdl(schema string) []migration {
 			continue
 		}
 
-		migrations = append(migrations, migration{
+		migrations = append(migrations, Migration{
 			Name:       name,
 			UpScript:   definition,
 			DownScript: fmt.Sprintf("DROP FUNCTION IF EXISTS %s(%s);", name, params),

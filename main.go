@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"sync"
 
 	"github.com/fatih/color"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -165,9 +166,17 @@ func main() {
 						return cmd.Call(ctx.Args().Get(0))
 					}
 
+					waitGroup := sync.WaitGroup{}
 					for k := range cfg.Migration.Schemas {
-						cmd.Call(k)
+						waitGroup.Add(1)
+						go func(schema string, wg *sync.WaitGroup) {
+							cmd.Call(schema)
+
+							wg.Done()
+						}(k, &waitGroup)
 					}
+
+					waitGroup.Wait()
 
 					return nil
 				},

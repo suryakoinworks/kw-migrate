@@ -14,16 +14,16 @@ func NewEnum(db *sql.DB) enum {
 	return enum{db: db}
 }
 
-func (s enum) GenerateDdl(schema string) []migration {
+func (s enum) GenerateDdl(schema string) []Migration {
 	rows, err := s.db.Query(fmt.Sprintf(QUERY_LIST_ENUM, schema))
 	if err != nil {
 		fmt.Println(err.Error())
 
-		return []migration{}
+		return []Migration{}
 	}
 	defer rows.Close()
 
-	udts := []migration{}
+	udts := []Migration{}
 	for rows.Next() {
 		var name string
 		var values string
@@ -40,7 +40,7 @@ func (s enum) GenerateDdl(schema string) []migration {
 			shortName = sName[1]
 		}
 
-		udts = append(udts, migration{
+		udts = append(udts, Migration{
 			Name:       shortName,
 			UpScript:   s.createDdl(name, values),
 			DownScript: fmt.Sprintf("DROP TYPE IF EXISTS %s;", name),

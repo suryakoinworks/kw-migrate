@@ -1,14 +1,14 @@
 package db
 
 type (
-	migration struct {
+	Migration struct {
 		Name       string
 		UpScript   string
 		DownScript string
 	}
 
 	Migrate interface {
-		GenerateDdl(schema string) []migration
+		GenerateDdl(schema string) []Migration
 	}
 )
 

@@ -13,16 +13,16 @@ func NewView(db *sql.DB) view {
 	return view{db: db}
 }
 
-func (s view) GenerateDdl(schema string) []migration {
+func (s view) GenerateDdl(schema string) []Migration {
 	rows, err := s.db.Query(fmt.Sprintf(QUERY_LIST_VIEW, schema))
 	if err != nil {
 		fmt.Println(err.Error())
 
-		return []migration{}
+		return []Migration{}
 	}
 	defer rows.Close()
 
-	migrations := []migration{}
+	migrations := []Migration{}
 	for rows.Next() {
 		var name string
 		var definition string
@@ -33,7 +33,7 @@ func (s view) GenerateDdl(schema string) []migration {
 			continue
 		}
 
-		migrations = append(migrations, migration{
+		migrations = append(migrations, Migration{
 			Name:       name,
 			UpScript:   definition,
 			DownScript: fmt.Sprintf("DROP VIEW IF EXISTS %s;", name),

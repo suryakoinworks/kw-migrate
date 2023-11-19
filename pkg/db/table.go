@@ -17,9 +17,9 @@ type (
 
 	Ddl struct {
 		Name       string
-		Definition migration
-		Reference  migration
-		ForeignKey migration
+		Definition Migration
+		Reference  Migration
+		ForeignKey Migration
 	}
 )
 
@@ -103,15 +103,15 @@ func (t table) Generate(name string, schemaOnly bool) Ddl {
 
 	return Ddl{
 		Name: name,
-		Definition: migration{
+		Definition: Migration{
 			UpScript:   strings.Replace(strings.Replace(strings.Join(upScript, "\n"), "CREATE TABLE", "CREATE TABLE IF NOT EXISTS", -1), "CREATE SEQUENCE", "CREATE SEQUENCE IF NOT EXISTS", -1),
 			DownScript: strings.Join(downScript, "\n"),
 		},
-		Reference: migration{
+		Reference: Migration{
 			UpScript:   strings.Join(upReferenceScript, "\n"),
 			DownScript: strings.Join(downReferenceScript, "\n"),
 		},
-		ForeignKey: migration{
+		ForeignKey: Migration{
 			UpScript:   strings.Join(upForeignScript, "\n"),
 			DownScript: strings.Join(downForeignScript, "\n"),
 		},
