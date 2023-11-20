@@ -9,29 +9,31 @@ import (
 
 type run struct {
 	config       config.Migration
+	boldFont     *color.Color
 	errorColor   *color.Color
 	successColor *color.Color
 }
 
-func NewRun(config config.Migration, errorColor *color.Color, successColor *color.Color) run {
+func NewRun(config config.Migration) run {
 	return run{
 		config:       config,
-		errorColor:   errorColor,
-		successColor: successColor,
+		boldFont:     color.New(color.Bold),
+		errorColor:   color.New(color.FgRed),
+		successColor: color.New(color.FgGreen),
 	}
 }
 
 func (r run) Call(source string, schema string, step int) error {
 	dbConfig, ok := r.config.Connections[source]
 	if !ok {
-		r.errorColor.Printf("Database connection '%s' not found\n", source)
+		r.errorColor.Printf("Database connection '%s' not found\n", r.boldFont.Sprint(source))
 
 		return nil
 	}
 
 	_, ok = r.config.Schemas[schema]
 	if !ok {
-		r.errorColor.Printf("Schema '%s' not found\n", schema)
+		r.errorColor.Printf("Schema '%s' not found\n", r.boldFont.Sprint(schema))
 
 		return nil
 	}
@@ -57,7 +59,7 @@ func (r run) Call(source string, schema string, step int) error {
 		return nil
 	}
 
-	r.successColor.Printf("Migration on %s schema %s run successfully\n", source, schema)
+	r.successColor.Printf("Migration on %s schema %s run successfully\n", r.boldFont.Sprint(source), r.boldFont.Sprint(schema))
 
 	return nil
 }

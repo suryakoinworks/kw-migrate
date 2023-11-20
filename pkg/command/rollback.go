@@ -9,29 +9,31 @@ import (
 
 type rollback struct {
 	config       config.Migration
+	boldFont     *color.Color
 	errorColor   *color.Color
 	successColor *color.Color
 }
 
-func NewRollback(config config.Migration, errorColor *color.Color, successColor *color.Color) rollback {
+func NewRollback(config config.Migration) rollback {
 	return rollback{
 		config:       config,
-		errorColor:   errorColor,
-		successColor: successColor,
+		boldFont:     color.New(color.Bold),
+		errorColor:   color.New(color.FgRed),
+		successColor: color.New(color.FgGreen),
 	}
 }
 
 func (r rollback) Call(source string, schema string, step int) error {
 	dbConfig, ok := r.config.Connections[source]
 	if !ok {
-		r.errorColor.Printf("Database connection '%s' not found\n", source)
+		r.errorColor.Printf("Database connection '%s' not found\n", r.boldFont.Sprint(source))
 
 		return nil
 	}
 
 	_, ok = r.config.Schemas[schema]
 	if !ok {
-		r.errorColor.Printf("Schema '%s' not found\n", schema)
+		r.errorColor.Printf("Schema '%s' not found\n", r.boldFont.Sprint(schema))
 
 		return nil
 	}
@@ -63,7 +65,7 @@ func (r rollback) Call(source string, schema string, step int) error {
 		migrator.Steps(-1)
 	}
 
-	r.successColor.Printf("Migration rolled back to %d on %s schema %s\n", version, source, schema)
+	r.successColor.Printf("Migration rolled back to %s on %s schema %s\n", r.boldFont.Sprint(version), r.boldFont.Sprint(source), r.boldFont.Sprint(schema))
 
 	return nil
 }

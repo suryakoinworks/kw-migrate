@@ -9,29 +9,31 @@ import (
 
 type version struct {
 	config       config.Migration
+	boldFont     *color.Color
 	errorColor   *color.Color
 	successColor *color.Color
 }
 
-func NewVersion(config config.Migration, errorColor *color.Color, successColor *color.Color) version {
+func NewVersion(config config.Migration) version {
 	return version{
 		config:       config,
-		errorColor:   errorColor,
-		successColor: successColor,
+		boldFont:     color.New(color.Bold),
+		errorColor:   color.New(color.FgRed),
+		successColor: color.New(color.FgGreen),
 	}
 }
 
 func (v version) Call(source string, schema string) uint {
 	dbConfig, ok := v.config.Connections[source]
 	if !ok {
-		v.errorColor.Printf("Database connection '%s' not found\n", source)
+		v.errorColor.Printf("Database connection '%s' not found\n", v.boldFont.Sprint(source))
 
 		return 0
 	}
 
 	_, ok = v.config.Schemas[schema]
 	if !ok {
-		v.errorColor.Printf("Schema '%s' not found\n", schema)
+		v.errorColor.Printf("Schema '%s' not found\n", v.boldFont.Sprint(schema))
 
 		return 0
 	}

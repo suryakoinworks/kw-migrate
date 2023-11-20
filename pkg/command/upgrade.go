@@ -16,14 +16,16 @@ import (
 )
 
 type upgrade struct {
+	boldFont     *color.Color
 	errorColor   *color.Color
 	successColor *color.Color
 }
 
-func NewUpgrade(errorColor *color.Color, successColor *color.Color) upgrade {
+func NewUpgrade() upgrade {
 	return upgrade{
-		errorColor:   errorColor,
-		successColor: successColor,
+		boldFont:     color.New(color.Bold),
+		errorColor:   color.New(color.FgRed),
+		successColor: color.New(color.FgGreen),
 	}
 }
 
@@ -130,8 +132,7 @@ func (u upgrade) Call() error {
 	}
 
 	progress.Stop()
-	u.successColor.Print("KMT has been upgraded to ")
-	color.New(color.FgGreen, color.Bold).Println(latest)
+	u.successColor.Printf("KMT has been upgraded to %s\n", u.boldFont.Sprint(latest))
 
 	os.RemoveAll(wd)
 

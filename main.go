@@ -33,9 +33,9 @@ func main() {
 						return errors.New("not enough arguments. Usage: kmt sync <cluster> <schema>")
 					}
 
-					config := config.Parse("Kwfile.yml")
+					config := config.Parse(config.CONFIG_FILE)
 
-					return command.NewSync(config.Migration, color.New(color.FgRed), color.New(color.FgGreen)).Run(ctx.Args().Get(0), ctx.Args().Get(1))
+					return command.NewSync(config.Migration).Run(ctx.Args().Get(0), ctx.Args().Get(1))
 				},
 			},
 			{
@@ -48,9 +48,9 @@ func main() {
 						return errors.New("not enough arguments. Usage: kmt up <db> <schema>")
 					}
 
-					config := config.Parse("Kwfile.yml")
+					config := config.Parse(config.CONFIG_FILE)
 
-					return command.NewUp(config.Migration, color.New(color.FgRed), color.New(color.FgGreen)).Call(ctx.Args().Get(0), ctx.Args().Get(1))
+					return command.NewUp(config.Migration).Call(ctx.Args().Get(0), ctx.Args().Get(1))
 				},
 			},
 			{
@@ -63,7 +63,7 @@ func main() {
 						return errors.New("not enough arguments. Usage: kmt rollback <db> <schema> <step>")
 					}
 
-					config := config.Parse("Kwfile.yml")
+					config := config.Parse(config.CONFIG_FILE)
 					errorColor := color.New(color.FgRed)
 
 					n, err := strconv.ParseInt(ctx.Args().Get(2), 10, 0)
@@ -73,7 +73,7 @@ func main() {
 						return nil
 					}
 
-					return command.NewRollback(config.Migration, errorColor, color.New(color.FgGreen)).Call(ctx.Args().Get(0), ctx.Args().Get(1), int(n))
+					return command.NewRollback(config.Migration).Call(ctx.Args().Get(0), ctx.Args().Get(1), int(n))
 				},
 			},
 			{
@@ -86,7 +86,7 @@ func main() {
 						return errors.New("not enough arguments. Usage: kmt run <db> <schema> <step>")
 					}
 
-					config := config.Parse("Kwfile.yml")
+					config := config.Parse(config.CONFIG_FILE)
 					errorColor := color.New(color.FgRed)
 
 					n, err := strconv.ParseInt(ctx.Args().Get(2), 10, 0)
@@ -96,7 +96,7 @@ func main() {
 						return nil
 					}
 
-					return command.NewRun(config.Migration, errorColor, color.New(color.FgGreen)).Call(ctx.Args().Get(0), ctx.Args().Get(1), int(n))
+					return command.NewRun(config.Migration).Call(ctx.Args().Get(0), ctx.Args().Get(1), int(n))
 				},
 			},
 			{
@@ -109,9 +109,9 @@ func main() {
 						return errors.New("not enough arguments. Usage: kmt down <db> <schema>")
 					}
 
-					config := config.Parse("Kwfile.yml")
+					config := config.Parse(config.CONFIG_FILE)
 
-					return command.NewDown(config.Migration, color.New(color.FgRed), color.New(color.FgGreen)).Call(ctx.Args().Get(0), ctx.Args().Get(1))
+					return command.NewDown(config.Migration).Call(ctx.Args().Get(0), ctx.Args().Get(1))
 				},
 			},
 			{
@@ -124,9 +124,9 @@ func main() {
 						return errors.New("not enough arguments. Usage: kmt clean <db> <schema>")
 					}
 
-					config := config.Parse("Kwfile.yml")
+					config := config.Parse(config.CONFIG_FILE)
 
-					return command.NewClean(config.Migration, color.New(color.FgRed), color.New(color.FgGreen)).Call(ctx.Args().Get(0), ctx.Args().Get(1))
+					return command.NewClean(config.Migration).Call(ctx.Args().Get(0), ctx.Args().Get(1))
 				},
 			},
 			{
@@ -139,9 +139,9 @@ func main() {
 						return errors.New("not enough arguments. Usage: kmt create <schema> <name>")
 					}
 
-					config := config.Parse("Kwfile.yml")
+					config := config.Parse(config.CONFIG_FILE)
 
-					return command.NewCreate(config.Migration, color.New(color.FgRed), color.New(color.FgGreen)).Call(ctx.Args().Get(0), ctx.Args().Get(1))
+					return command.NewCreate(config.Migration).Call(ctx.Args().Get(0), ctx.Args().Get(1))
 				},
 			},
 			{
@@ -150,7 +150,7 @@ func main() {
 				Description: "generate [<schema>]",
 				Usage:       "Generate Migration from Existing Database",
 				Action: func(ctx *cli.Context) error {
-					cfg := config.Parse("Kwfile.yml")
+					cfg := config.Parse(config.CONFIG_FILE)
 					source, ok := cfg.Migration.Connections[cfg.Migration.Source]
 					if !ok {
 						return fmt.Errorf("config for '%s' not found", cfg.Migration.Source)
@@ -161,7 +161,7 @@ func main() {
 						return err
 					}
 
-					cmd := command.NewGenerate(cfg.Migration, db, color.New(color.FgRed), color.New(color.FgGreen))
+					cmd := command.NewGenerate(cfg.Migration, db)
 					if ctx.NArg() == 1 {
 						return cmd.Call(ctx.Args().Get(0))
 					}
@@ -191,8 +191,8 @@ func main() {
 						return errors.New("not enough arguments. Usage: kmt version <db> [<schema>]")
 					}
 
-					config := config.Parse("Kwfile.yml")
-					cmd := command.NewVersion(config.Migration, color.New(color.FgRed), color.New(color.FgGreen))
+					config := config.Parse(config.CONFIG_FILE)
+					cmd := command.NewVersion(config.Migration)
 
 					t := table.NewWriter()
 					t.SetOutputMirror(os.Stdout)
@@ -202,6 +202,9 @@ func main() {
 						db := ctx.Args().Get(0)
 						schema := ctx.Args().Get(1)
 						version := cmd.Call(db, schema)
+						if version == 0 {
+							return nil
+						}
 
 						t.AppendRows([]table.Row{
 							{1, db, schema, version},
@@ -215,6 +218,9 @@ func main() {
 					db := ctx.Args().Get(0)
 					for k := range config.Migration.Schemas {
 						version := cmd.Call(db, k)
+						if version == 0 {
+							return nil
+						}
 
 						t.AppendRows([]table.Row{
 							{number, db, k, version},
@@ -238,8 +244,8 @@ func main() {
 						return errors.New("not enough arguments. Usage: kmt compare <source> <compare> [<schema>]")
 					}
 
-					config := config.Parse("Kwfile.yml")
-					cmd := command.NewCompare(config.Migration, color.New(color.FgRed), color.New(color.FgGreen))
+					config := config.Parse(config.CONFIG_FILE)
+					cmd := command.NewCompare(config.Migration)
 
 					t := table.NewWriter()
 					t.SetOutputMirror(os.Stdout)
@@ -252,6 +258,9 @@ func main() {
 					if ctx.NArg() == 3 {
 						schema := ctx.Args().Get(2)
 						vSource, vCompare := cmd.Call(source, compare, schema)
+						if vSource == 0 || vCompare == 0 {
+							return nil
+						}
 
 						t.AppendRows([]table.Row{
 							{1, schema, vSource, vCompare, vSource == vCompare},
@@ -264,6 +273,9 @@ func main() {
 					number := 1
 					for k := range config.Migration.Schemas {
 						vSource, vCompare := cmd.Call(source, compare, k)
+						if vSource == 0 || vCompare == 0 {
+							return nil
+						}
 
 						t.AppendRows([]table.Row{
 							{number, k, vSource, vCompare, vSource == vCompare},
@@ -283,9 +295,9 @@ func main() {
 				Description: "test",
 				Usage:       "Test kmt configuration",
 				Action: func(ctx *cli.Context) error {
-					config := config.Parse("Kwfile.yml")
+					config := config.Parse(config.CONFIG_FILE)
 
-					return command.NewTest(config.Migration, color.New(color.FgRed), color.New(color.FgGreen)).Call()
+					return command.NewTest(config.Migration).Call()
 				},
 			},
 			{
@@ -294,7 +306,7 @@ func main() {
 				Description: "upgrade",
 				Usage:       "Upgrade kmt to latest version",
 				Action: func(ctx *cli.Context) error {
-					return command.NewUpgrade(color.New(color.FgRed), color.New(color.FgGreen)).Call()
+					return command.NewUpgrade().Call()
 				},
 			},
 			{

@@ -9,22 +9,24 @@ import (
 
 type clean struct {
 	config       config.Migration
+	boldFont     *color.Color
 	errorColor   *color.Color
 	successColor *color.Color
 }
 
-func NewClean(config config.Migration, errorColor *color.Color, successColor *color.Color) clean {
+func NewClean(config config.Migration) clean {
 	return clean{
 		config:       config,
-		errorColor:   errorColor,
-		successColor: successColor,
+		boldFont:     color.New(color.Bold),
+		errorColor:   color.New(color.FgRed),
+		successColor: color.New(color.FgGreen),
 	}
 }
 
 func (c clean) Call(source string, schema string) error {
 	dbConfig, ok := c.config.Connections[source]
 	if !ok {
-		c.errorColor.Printf("Database connection '%s' not found\n", source)
+		c.errorColor.Printf("Database connection '%s' not found\n", c.boldFont.Sprint(source))
 
 		return nil
 	}
@@ -51,7 +53,7 @@ func (c clean) Call(source string, schema string) error {
 		migrator.Steps(-1)
 	}
 
-	c.successColor.Printf("Migration cleaned on %s schema %s\n", source, schema)
+	c.successColor.Printf("Migration cleaned on %s schema %s\n", c.boldFont.Sprint(source), c.boldFont.Sprint(schema))
 
 	return err
 }

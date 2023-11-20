@@ -16,9 +16,11 @@ Manage postgresql cluster migration easly
 
 - Reverse migration from existing database
 
+- Auto clean dirty migration
+
 ## Install
 
-- Download latest release `https://github.com/suryakoinworks/kmt/tags`
+- Download latest release `https://github.com/suryakoinworks/kw-migrate/tags`
 
 - Extract source
 
@@ -54,7 +56,7 @@ Run `kmt --help` for complete commands
 
 - Create new project folder
 
-- Copy Kwfile.yml below
+- Copy Kmtfile.yml below
 
 ```yaml
 version: 1.0

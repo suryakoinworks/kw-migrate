@@ -11,22 +11,24 @@ import (
 
 type sync struct {
 	config       config.Migration
+	boldFont     *color.Color
 	errorColor   *color.Color
 	successColor *color.Color
 }
 
-func NewSync(config config.Migration, errorColor *color.Color, successColor *color.Color) sync {
+func NewSync(config config.Migration) sync {
 	return sync{
 		config:       config,
-		errorColor:   errorColor,
-		successColor: successColor,
+		boldFont:     color.New(color.Bold),
+		errorColor:   color.New(color.FgRed),
+		successColor: color.New(color.FgGreen),
 	}
 }
 
 func (s sync) Run(cluster string, schema string) error {
 	lists, ok := s.config.Cluster[cluster]
 	if !ok {
-		s.errorColor.Printf("Cluster '%s' isn't defined\n", cluster)
+		s.errorColor.Printf("Cluster '%s' isn't defined\n", s.boldFont.Sprint(cluster))
 
 		return nil
 	}
@@ -38,7 +40,7 @@ func (s sync) Run(cluster string, schema string) error {
 		}
 
 		if _, ok := s.config.Connections[c]; !ok {
-			s.errorColor.Printf("Connection '%s' isn't defined\n", c)
+			s.errorColor.Printf("Connection '%s' isn't defined\n", s.boldFont.Sprint(c))
 
 			return nil
 		}
@@ -57,7 +59,7 @@ func (s sync) Run(cluster string, schema string) error {
 		migrator := config.NewMigrator(db, source.Name, schema, fmt.Sprintf("%s/%s", s.config.Folder, schema))
 
 		progress := spinner.New(spinner.CharSets[config.SPINER_INDEX], config.SPINER_DURATION)
-		progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", i, schema)
+		progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", s.boldFont.Sprint(i), s.boldFont.Sprint(schema))
 		progress.Start()
 
 		err = migrator.Up()
@@ -76,7 +78,7 @@ func (s sync) Run(cluster string, schema string) error {
 		progress.Stop()
 	}
 
-	s.successColor.Printf("Migration synced on %s schema %s\n", cluster, schema)
+	s.successColor.Printf("Migration synced on %s schema %s\n", s.boldFont.Sprint(cluster), s.boldFont.Sprint(schema))
 
 	return nil
 }

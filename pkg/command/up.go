@@ -11,29 +11,31 @@ import (
 
 type up struct {
 	config       config.Migration
+	boldFont     *color.Color
 	errorColor   *color.Color
 	successColor *color.Color
 }
 
-func NewUp(config config.Migration, errorColor *color.Color, successColor *color.Color) up {
+func NewUp(config config.Migration) up {
 	return up{
 		config:       config,
-		errorColor:   errorColor,
-		successColor: successColor,
+		boldFont:     color.New(color.Bold),
+		errorColor:   color.New(color.FgRed),
+		successColor: color.New(color.FgGreen),
 	}
 }
 
 func (u up) Call(source string, schema string) error {
 	dbConfig, ok := u.config.Connections[source]
 	if !ok {
-		u.errorColor.Printf("Database connection '%s' not found\n", source)
+		u.errorColor.Printf("Database connection '%s' not found\n", u.boldFont.Sprint(source))
 
 		return nil
 	}
 
 	_, ok = u.config.Schemas[schema]
 	if !ok {
-		u.errorColor.Printf("Schema '%s' not found\n", schema)
+		u.errorColor.Printf("Schema '%s' not found\n", u.boldFont.Sprint(schema))
 
 		return nil
 	}
@@ -55,14 +57,14 @@ func (u up) Call(source string, schema string) error {
 	migrator := config.NewMigrator(db, dbConfig.Name, schema, fmt.Sprintf("%s/%s", u.config.Folder, schema))
 
 	progress := spinner.New(spinner.CharSets[config.SPINER_INDEX], config.SPINER_DURATION)
-	progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", source, schema)
+	progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", u.boldFont.Sprint(source), u.boldFont.Sprint(schema))
 	progress.Start()
 
 	err = migrator.Up()
 	if err != nil && err == gomigrate.ErrNoChange {
 		progress.Stop()
 
-		u.successColor.Printf("Database %s schema %s is up to date\n", source, schema)
+		u.successColor.Printf("Database %s schema %s is up to date\n", u.boldFont.Sprint(source), u.boldFont.Sprint(schema))
 
 		return nil
 	}
@@ -75,7 +77,7 @@ func (u up) Call(source string, schema string) error {
 
 	progress.Stop()
 
-	u.successColor.Printf("Migration on %s schema %s run successfully\n", source, schema)
+	u.successColor.Printf("Migration on %s schema %s run successfully\n", u.boldFont.Sprint(source), u.boldFont.Sprint(schema))
 
 	return err
 }

@@ -11,22 +11,24 @@ import (
 
 type down struct {
 	config       config.Migration
+	boldFont     *color.Color
 	errorColor   *color.Color
 	successColor *color.Color
 }
 
-func NewDown(config config.Migration, errorColor *color.Color, successColor *color.Color) down {
+func NewDown(config config.Migration) down {
 	return down{
 		config:       config,
-		errorColor:   errorColor,
-		successColor: successColor,
+		boldFont:     color.New(color.Bold),
+		errorColor:   color.New(color.FgRed),
+		successColor: color.New(color.FgGreen),
 	}
 }
 
 func (d down) Call(source string, schema string) error {
 	dbConfig, ok := d.config.Connections[source]
 	if !ok {
-		d.errorColor.Printf("Database connection '%s' not found\n", source)
+		d.errorColor.Printf("Database connection '%s' not found\n", d.boldFont.Sprint(source))
 
 		return nil
 	}
@@ -48,14 +50,14 @@ func (d down) Call(source string, schema string) error {
 	migrator := config.NewMigrator(db, dbConfig.Name, schema, fmt.Sprintf("%s/%s", d.config.Folder, schema))
 
 	progress := spinner.New(spinner.CharSets[config.SPINER_INDEX], config.SPINER_DURATION)
-	progress.Suffix = fmt.Sprintf(" Tear down migrations for %s on %s schema", source, schema)
+	progress.Suffix = fmt.Sprintf(" Tear down migrations for %s on %s schema", d.boldFont.Sprint(source), d.boldFont.Sprint(schema))
 	progress.Start()
 
 	err = migrator.Down()
 	if err == nil || err == gomigrate.ErrNoChange {
 		progress.Stop()
 
-		d.successColor.Printf("Database %s schema %s is up to date\n", source, schema)
+		d.successColor.Printf("Database %s schema %s is up to date\n", d.boldFont.Sprint(source), d.boldFont.Sprint(schema))
 
 		return nil
 	}
@@ -68,7 +70,7 @@ func (d down) Call(source string, schema string) error {
 
 	progress.Stop()
 
-	d.successColor.Printf("Migration on %s schema %s down successfully\n", source, schema)
+	d.successColor.Printf("Migration on %s schema %s down successfully\n", d.boldFont.Sprint(source), d.boldFont.Sprint(schema))
 
 	return err
 }

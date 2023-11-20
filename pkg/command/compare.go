@@ -9,66 +9,68 @@ import (
 
 type compare struct {
 	config       config.Migration
+	boldFont     *color.Color
 	errorColor   *color.Color
 	successColor *color.Color
 }
 
-func NewCompare(config config.Migration, errorColor *color.Color, successColor *color.Color) compare {
+func NewCompare(config config.Migration) compare {
 	return compare{
 		config:       config,
-		errorColor:   errorColor,
-		successColor: successColor,
+		boldFont:     color.New(color.Bold),
+		errorColor:   color.New(color.FgRed),
+		successColor: color.New(color.FgGreen),
 	}
 }
 
-func (v compare) Call(source string, compare string, schema string) (uint, uint) {
-	dbSource, ok := v.config.Connections[source]
+func (c compare) Call(source string, compare string, schema string) (uint, uint) {
+	dbSource, ok := c.config.Connections[source]
 	if !ok {
-		v.errorColor.Printf("Database connection '%s' not found\n", source)
+		c.errorColor.Printf("Database connection '%s' not found\n", c.boldFont.Sprint(source))
 
 		return 0, 0
 	}
 
-	dbCompare, ok := v.config.Connections[compare]
+	dbCompare, ok := c.config.Connections[compare]
 	if !ok {
-		v.errorColor.Printf("Database connection '%s' not found\n", compare)
+		c.errorColor.Printf("Database connection '%s' not found\n", c.boldFont.Sprint(compare))
 
 		return 0, 0
 	}
 
-	_, ok = v.config.Schemas[schema]
+	_, ok = c.config.Schemas[schema]
 	if !ok {
-		v.errorColor.Printf("Schema '%s' not found\n", schema)
+		c.errorColor.Printf("Schema '%s' not found\n", c.boldFont.Sprint(schema))
 
 		return 0, 0
 	}
 
 	connSource, err := config.NewConnection(dbSource)
 	if err != nil {
-		v.errorColor.Println(err.Error())
+		c.errorColor.Println(err.Error())
 
 		return 0, 0
 	}
 
 	connCompare, err := config.NewConnection(dbCompare)
 	if err != nil {
-		v.errorColor.Println(err.Error())
+		c.errorColor.Println(err.Error())
 
 		return 0, 0
 	}
 
-	sourceMigrator := config.NewMigrator(connSource, dbSource.Name, schema, fmt.Sprintf("%s/%s", v.config.Folder, schema))
+	sourceMigrator := config.NewMigrator(connSource, dbSource.Name, schema, fmt.Sprintf("%s/%s", c.config.Folder, schema))
 	sourceVersion, _, err := sourceMigrator.Version()
 	if err != nil {
-		v.errorColor.Println(err.Error())
+		c.errorColor.Println(err.Error())
 
 		return 0, 0
 	}
 
-	compareMigrator := config.NewMigrator(connCompare, dbCompare.Name, schema, fmt.Sprintf("%s/%s", v.config.Folder, schema))
+	compareMigrator := config.NewMigrator(connCompare, dbCompare.Name, schema, fmt.Sprintf("%s/%s", c.config.Folder, schema))
 	compareVersion, _, err := compareMigrator.Version()
 	if err != nil {
-		v.errorColor.Println(err.Error())
+		c.errorColor.Println(err.Error())
 
 		return 0, 0
 	}

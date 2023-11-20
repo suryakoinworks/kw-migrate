@@ -11,22 +11,24 @@ import (
 
 type create struct {
 	config       config.Migration
+	boldFont     *color.Color
 	errorColor   *color.Color
 	successColor *color.Color
 }
 
-func NewCreate(config config.Migration, errorColor *color.Color, successColor *color.Color) create {
+func NewCreate(config config.Migration) create {
 	return create{
 		config:       config,
-		errorColor:   errorColor,
-		successColor: successColor,
+		boldFont:     color.New(color.Bold),
+		errorColor:   color.New(color.FgRed),
+		successColor: color.New(color.FgGreen),
 	}
 }
 
 func (c create) Call(schema string, name string) error {
 	_, ok := c.config.Schemas[schema]
 	if !ok {
-		c.errorColor.Printf("Schema '%s' not found\n", schema)
+		c.errorColor.Printf("Schema '%s' not found\n", c.boldFont.Sprint(schema))
 
 		return nil
 	}
@@ -49,7 +51,7 @@ func (c create) Call(schema string, name string) error {
 		return nil
 	}
 
-	c.successColor.Printf("Migration created as %s\n", c.successColor.Sprintf(name))
+	c.successColor.Printf("Migration created as %s\n", c.boldFont.Sprint(name))
 
 	return err
 }

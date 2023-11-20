@@ -16,27 +16,29 @@ import (
 type generate struct {
 	config       config.Migration
 	connection   *sql.DB
+	boldFont     *color.Color
 	errorColor   *color.Color
 	successColor *color.Color
 }
 
-func NewGenerate(config config.Migration, connection *sql.DB, errorColor *color.Color, successColor *color.Color) generate {
+func NewGenerate(config config.Migration, connection *sql.DB) generate {
 	return generate{
 		config:       config,
 		connection:   connection,
-		errorColor:   errorColor,
-		successColor: successColor,
+		boldFont:     color.New(color.Bold),
+		errorColor:   color.New(color.FgRed),
+		successColor: color.New(color.FgGreen),
 	}
 }
 
 func (g generate) Call(schema string) error {
 	progress := spinner.New(spinner.CharSets[config.SPINER_INDEX], config.SPINER_DURATION)
-	progress.Suffix = fmt.Sprintf(" Listing tables on schema %s...", schema)
+	progress.Suffix = fmt.Sprintf(" Listing tables on schema %s...", g.successColor.Sprint(schema))
 	progress.Start()
 
 	_, ok := g.config.Schemas[schema]
 	if !ok {
-		g.errorColor.Printf("Schema '%s' not found\n", schema)
+		g.errorColor.Printf("Schema '%s' not found\n", g.boldFont.Sprint(schema))
 
 		return nil
 	}
@@ -162,7 +164,7 @@ func (g generate) Call(schema string) error {
 
 	source, ok := g.config.Connections[g.config.Source]
 	if !ok {
-		g.errorColor.Printf("Config for '%s' not found", g.config.Source)
+		g.errorColor.Printf("Config for '%s' not found", g.boldFont.Sprint(g.config.Source))
 
 		return nil
 	}
@@ -303,7 +305,7 @@ func (g generate) Call(schema string) error {
 
 	progress.Stop()
 
-	g.successColor.Printf("Migration generation on schema %s run successfully\n", schema)
+	g.successColor.Printf("Migration generation on schema %s run successfully\n", g.boldFont.Sprint(schema))
 
 	return nil
 }
