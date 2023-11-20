@@ -6,7 +6,6 @@ import (
 	"kmt/pkg/config"
 	"kmt/pkg/db"
 	"os"
-	intlSync "sync"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -172,16 +171,10 @@ func (g generate) Call(schema string) error {
 	g.config.Schemas[schema]["tables"] = db.NewSchema(g.connection).ListTables(schema, g.config.Schemas[schema]["excludes"]...)
 
 	ddlTool := db.NewTable(g.config.PgDump, source)
+	cDdl := make(chan db.Ddl)
 
-	scripts := map[string]map[string]db.Ddl{}
-	scripts[schema] = map[string]db.Ddl{}
-	scriptLock := intlSync.Mutex{}
-	waitGroup := intlSync.WaitGroup{}
-
-	for _, t := range g.config.Schemas[schema]["tables"] {
-		waitGroup.Add(1)
-
-		go func(version int64, schema string, tableName string, wg *intlSync.WaitGroup) {
+	go func(version int64, schema string, cDdl chan<- db.Ddl) {
+		for _, tableName := range g.config.Schemas[schema]["tables"] {
 			progress.Stop()
 			progress = spinner.New(spinner.CharSets[config.SPINER_INDEX], config.SPINER_DURATION)
 			progress.Suffix = fmt.Sprintf(" Processing table %s on schema %s...", g.successColor.Sprint(tableName), g.successColor.Sprint(schema))
@@ -189,25 +182,22 @@ func (g generate) Call(schema string) error {
 
 			schemaOnly := true
 			for _, d := range g.config.Schemas[schema]["with_data"] {
-				if d == t {
+				if d == tableName {
 					schemaOnly = false
 
 					break
 				}
 			}
 
-			scriptLock.Lock()
 			script := ddlTool.Generate(fmt.Sprintf("%s.%s", schema, tableName), schemaOnly)
-			scripts[schema][script.Name] = script
-			scriptLock.Unlock()
+
+			cDdl <- script
 
 			err := os.WriteFile(fmt.Sprintf("%s/%s/%d_table_%s.up.sql", g.config.Folder, schema, version, tableName), []byte(script.Definition.UpScript), 0777)
 			if err != nil {
 				progress.Stop()
 
 				g.errorColor.Println(err.Error())
-
-				wg.Done()
 
 				return
 			}
@@ -217,8 +207,6 @@ func (g generate) Call(schema string) error {
 				progress.Stop()
 
 				g.errorColor.Println(err.Error())
-
-				wg.Done()
 
 				return
 			}
@@ -231,8 +219,6 @@ func (g generate) Call(schema string) error {
 
 				g.errorColor.Println(err.Error())
 
-				wg.Done()
-
 				return
 			}
 
@@ -242,65 +228,41 @@ func (g generate) Call(schema string) error {
 
 				g.errorColor.Println(err.Error())
 
-				wg.Done()
-
 				return
 			}
 
-			wg.Done()
-		}(version, schema, t, &waitGroup)
-
-		version += 2
-	}
-
-	waitGroup.Wait()
-
-	progress.Stop()
-	progress = spinner.New(spinner.CharSets[config.SPINER_INDEX], config.SPINER_DURATION)
-	progress.Suffix = fmt.Sprintf(" Mapping references for schema %s...", g.successColor.Sprint(schema))
-	progress.Start()
-
-	for k, s := range scripts {
-		waitGroup = intlSync.WaitGroup{}
-
-		for _, c := range s {
-			waitGroup.Add(1)
-
-			go func(version int64, schema string, ddl db.Ddl, wg *intlSync.WaitGroup) {
-				if c.ForeignKey.UpScript == "" {
-					wg.Done()
-
-					return
-				}
-
-				err := os.WriteFile(fmt.Sprintf("%s/%s/%d_foreign_keys_%s.up.sql", g.config.Folder, schema, version, ddl.Name), []byte(ddl.ForeignKey.UpScript), 0777)
-				if err != nil {
-					progress.Stop()
-
-					g.errorColor.Println(err.Error())
-
-					wg.Done()
-
-					return
-				}
-
-				err = os.WriteFile(fmt.Sprintf("%s/%s/%d_foreign_keys_%s.down.sql", g.config.Folder, schema, version, ddl.Name), []byte(ddl.ForeignKey.DownScript), 0777)
-				if err != nil {
-					progress.Stop()
-
-					g.errorColor.Println(err.Error())
-
-					wg.Done()
-
-					return
-				}
-
-				wg.Done()
-			}(version, k, c, &waitGroup)
-
 			version++
 		}
-		waitGroup.Wait()
+
+		close(cDdl)
+	}(version, schema, cDdl)
+
+	version = version + int64(len(g.config.Schemas[schema]["tables"])*2)
+
+	for ddl := range cDdl {
+		if ddl.ForeignKey.UpScript == "" {
+			continue
+		}
+
+		err := os.WriteFile(fmt.Sprintf("%s/%s/%d_foreign_keys_%s.up.sql", g.config.Folder, schema, version, ddl.Name), []byte(ddl.ForeignKey.UpScript), 0777)
+		if err != nil {
+			progress.Stop()
+
+			g.errorColor.Println(err.Error())
+
+			continue
+		}
+
+		err = os.WriteFile(fmt.Sprintf("%s/%s/%d_foreign_keys_%s.down.sql", g.config.Folder, schema, version, ddl.Name), []byte(ddl.ForeignKey.DownScript), 0777)
+		if err != nil {
+			progress.Stop()
+
+			g.errorColor.Println(err.Error())
+
+			continue
+		}
+
+		version++
 	}
 
 	progress.Stop()

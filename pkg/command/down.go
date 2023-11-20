@@ -54,7 +54,7 @@ func (d down) Call(source string, schema string) error {
 	progress.Start()
 
 	err = migrator.Down()
-	if err == nil || err == gomigrate.ErrNoChange {
+	if err != nil && err == gomigrate.ErrNoChange {
 		progress.Stop()
 
 		d.successColor.Printf("Database %s schema %s is up to date\n", d.boldFont.Sprint(source), d.boldFont.Sprint(schema))

@@ -102,9 +102,24 @@ func (t table) Generate(name string, schemaOnly bool) Ddl {
 	}
 
 	return Ddl{
-		Name: name,
+		Name: strings.Replace(name, ".", "_", -1),
 		Definition: Migration{
-			UpScript:   strings.Replace(strings.Replace(strings.Join(upScript, "\n"), "CREATE TABLE", "CREATE TABLE IF NOT EXISTS", -1), "CREATE SEQUENCE", "CREATE SEQUENCE IF NOT EXISTS", -1),
+			UpScript: strings.Replace(
+				strings.Replace(
+					strings.Replace(
+						strings.Join(upScript, "\n"),
+						config.CREATE_TABLE,
+						config.SECURE_CREATE_TABLE,
+						-1,
+					),
+					config.CREATE_SEQUENCE,
+					config.SECURE_CREATE_SEQUENCE,
+					-1,
+				),
+				config.CREATE_INDEX,
+				config.SECURE_CREATE_INDEX,
+				-1,
+			),
 			DownScript: strings.Join(downScript, "\n"),
 		},
 		Reference: Migration{
