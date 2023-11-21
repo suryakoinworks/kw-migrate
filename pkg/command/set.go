@@ -42,7 +42,7 @@ func (s set) Call(source string, schema string, version int) error {
 
 	valid := false
 	for _, file := range files {
-		f := strings.Split(file.Name(), "-")
+		f := strings.Split(file.Name(), "_")
 		s, _ := strconv.Atoi(f[0])
 		if version == s {
 			valid = true
