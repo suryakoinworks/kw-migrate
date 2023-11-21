@@ -38,17 +38,31 @@ Manage postgresql cluster migration easly
 
 - `kmt create <schema> <name>` to create new migration file
 
-- `kmt up <db> <schema>` to deploy migration(s) from database and schema which you provide
+- `kmt up <db> <schema>` to deploy migration(s) from database and schema
 
-- `kmt down <db> <schema>` to drop migration(s) from database and schema which you provide
+- `kmt down <db> <schema>` to drop migration(s) from database and schema
 
-- `kmt generate <schema>` to reverse migration from your `source` database, this command use `PGPASSWORD` environment variable
+- `kmt generate <schema>` to reverse migration from your `source` database
 
-- `kmt rollback <db> <schema> <step>` to rollback migration version from database and schema which you provide
+- `kmt rollback <db> <schema> <step>` to rollback migration version from database and schema
 
-- `kmt run <db> <schema> <step>` to run migration version from database and schema which you provide
+- `kmt run <db> <schema> <step>` to run migration version from database and schema
 
-- `kmt sync <cluster> <schema>` to sync migration in cluster for schema which you provide
+- `kmt sync <cluster> <schema>` to sync migration in cluster for schema
+
+- `kmt set <db> <schema>` to set migration to specific version
+
+- `kmt clean <db> <schema>` to clean migration on database and schema
+
+- `kmt version <db> <schema>` to show migration version on database and schema
+
+- `kmt compare <db1> <db2>` to compare migration from databases
+
+- `kmt test` to test configuration
+
+- `kmt upgrade` to upgrade cli
+
+- `kmt about` to show version
 
 Run `kmt --help` for complete commands
 

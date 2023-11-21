@@ -24,6 +24,12 @@ func NewRun(config config.Migration) run {
 }
 
 func (r run) Call(source string, schema string, step int) error {
+	if step <= 0 {
+		r.errorColor.Println("Invalid step")
+
+		return nil
+	}
+
 	dbConfig, ok := r.config.Connections[source]
 	if !ok {
 		r.errorColor.Printf("Database connection '%s' not found\n", r.boldFont.Sprint(source))
@@ -41,12 +47,6 @@ func (r run) Call(source string, schema string, step int) error {
 	db, err := config.NewConnection(dbConfig)
 	if err != nil {
 		r.errorColor.Println(err.Error())
-
-		return nil
-	}
-
-	if step <= 0 {
-		r.errorColor.Println("Invalid step")
 
 		return nil
 	}

@@ -46,6 +46,7 @@ func (g generate) Call(schema string) error {
 
 	version := time.Now().Unix()
 
+	progress.Stop()
 	progress = spinner.New(spinner.CharSets[config.SPINER_INDEX], config.SPINER_DURATION)
 	progress.Suffix = fmt.Sprintf(" Processing enums on schema %s...", g.successColor.Sprint(schema))
 

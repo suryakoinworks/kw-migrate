@@ -100,6 +100,29 @@ func main() {
 				},
 			},
 			{
+				Name:        "set",
+				Aliases:     []string{"st"},
+				Description: "set <db> <schema> <version>",
+				Usage:       "Set Migration to Specific Version",
+				Action: func(ctx *cli.Context) error {
+					if ctx.NArg() != 3 {
+						return errors.New("not enough arguments. Usage: kmt set <db> <schema> <version>")
+					}
+
+					config := config.Parse(config.CONFIG_FILE)
+					errorColor := color.New(color.FgRed)
+
+					n, err := strconv.ParseInt(ctx.Args().Get(2), 10, 0)
+					if err != nil {
+						errorColor.Println("Version is not number")
+
+						return nil
+					}
+
+					return command.NewSet(config.Migration).Call(ctx.Args().Get(0), ctx.Args().Get(1), int(n))
+				},
+			},
+			{
 				Name:        "down",
 				Aliases:     []string{"dw"},
 				Description: "down <db> <schema>",
@@ -316,8 +339,9 @@ func main() {
 				Usage:       "Show kmt profile",
 				Action: func(ctx *cli.Context) error {
 					gColor := color.New(color.FgGreen)
+					bColor := color.New(color.Bold)
 
-					fmt.Printf("%s\n\n", gColor.Sprintf("Koinworks Migration Tool (KMT) - %s", config.VERSION_STRING))
+					fmt.Printf("%s\n\n", gColor.Sprintf("Koinworks Migration Tool (KMT) - %s", bColor.Sprint(config.VERSION_STRING)))
 					fmt.Printf("%s<surya.iksanudi@koinworks.com>\n", gColor.Sprint("Muhamad Surya Iksanudin"))
 
 					return nil
