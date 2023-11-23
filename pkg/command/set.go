@@ -46,6 +46,8 @@ func (s set) Call(source string, schema string, version int) error {
 		s, _ := strconv.Atoi(f[0])
 		if version == s {
 			valid = true
+
+			break
 		}
 	}
 

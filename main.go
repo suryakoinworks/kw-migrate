@@ -27,7 +27,7 @@ func main() {
 				Name:        "sync",
 				Aliases:     []string{"sy"},
 				Description: "sync <cluster> <schema>",
-				Usage:       "Cluster Sync",
+				Usage:       "Set the cluster to latest version",
 				Action: func(ctx *cli.Context) error {
 					if ctx.NArg() != 2 {
 						return errors.New("not enough arguments. Usage: kmt sync <cluster> <schema>")
@@ -42,7 +42,7 @@ func main() {
 				Name:        "up",
 				Aliases:     []string{"up"},
 				Description: "up <db> <schema>",
-				Usage:       "Migration Up",
+				Usage:       "Migration up",
 				Action: func(ctx *cli.Context) error {
 					if ctx.NArg() != 2 {
 						return errors.New("not enough arguments. Usage: kmt up <db> <schema>")
@@ -54,10 +54,25 @@ func main() {
 				},
 			},
 			{
+				Name:        "make",
+				Aliases:     []string{"mk"},
+				Description: "make <schema> <source> <destination>",
+				Usage:       "Make schema on the destination has same version with the source",
+				Action: func(ctx *cli.Context) error {
+					if ctx.NArg() != 3 {
+						return errors.New("not enough arguments. Usage: kmt make <schema> <source> <destination>")
+					}
+
+					config := config.Parse(config.CONFIG_FILE)
+
+					return command.NewCopy(config.Migration).Call(ctx.Args().Get(0), ctx.Args().Get(1), ctx.Args().Get(2))
+				},
+			},
+			{
 				Name:        "rollback",
 				Aliases:     []string{"rb"},
 				Description: "rollback <db> <schema> <step>",
-				Usage:       "Migration Rollback",
+				Usage:       "Migration rollback",
 				Action: func(ctx *cli.Context) error {
 					if ctx.NArg() != 3 {
 						return errors.New("not enough arguments. Usage: kmt rollback <db> <schema> <step>")
@@ -80,7 +95,7 @@ func main() {
 				Name:        "run",
 				Aliases:     []string{"rn"},
 				Description: "run <db> <schema> <step>",
-				Usage:       "Run Migration",
+				Usage:       "Run migration for n steps",
 				Action: func(ctx *cli.Context) error {
 					if ctx.NArg() != 3 {
 						return errors.New("not enough arguments. Usage: kmt run <db> <schema> <step>")
@@ -103,7 +118,7 @@ func main() {
 				Name:        "set",
 				Aliases:     []string{"st"},
 				Description: "set <db> <schema> <version>",
-				Usage:       "Set Migration to Specific Version",
+				Usage:       "Set migration to specific version",
 				Action: func(ctx *cli.Context) error {
 					if ctx.NArg() != 3 {
 						return errors.New("not enough arguments. Usage: kmt set <db> <schema> <version>")
@@ -126,7 +141,7 @@ func main() {
 				Name:        "down",
 				Aliases:     []string{"dw"},
 				Description: "down <db> <schema>",
-				Usage:       "Migration Down",
+				Usage:       "Migration down",
 				Action: func(ctx *cli.Context) error {
 					if ctx.NArg() != 2 {
 						return errors.New("not enough arguments. Usage: kmt down <db> <schema>")
@@ -156,7 +171,7 @@ func main() {
 				Name:        "create",
 				Aliases:     []string{"cr"},
 				Description: "create <schema> <name>",
-				Usage:       "Create New Migration  for Schema",
+				Usage:       "Create new migration files for schema",
 				Action: func(ctx *cli.Context) error {
 					if ctx.NArg() != 2 {
 						return errors.New("not enough arguments. Usage: kmt create <schema> <name>")
@@ -171,7 +186,7 @@ func main() {
 				Name:        "generate",
 				Aliases:     []string{"gn"},
 				Description: "generate [<schema>]",
-				Usage:       "Generate Migration from Existing Database",
+				Usage:       "Generate migrations from existing database (reverse migration)",
 				Action: func(ctx *cli.Context) error {
 					cfg := config.Parse(config.CONFIG_FILE)
 					source, ok := cfg.Migration.Connections[cfg.Migration.Source]
@@ -261,7 +276,7 @@ func main() {
 				Name:        "compare",
 				Aliases:     []string{"c"},
 				Description: "compare <source> <compare> [<schema>]",
-				Usage:       "Show migration version comparation",
+				Usage:       "Compare migration from dbs",
 				Action: func(ctx *cli.Context) error {
 					if ctx.NArg() < 2 {
 						return errors.New("not enough arguments. Usage: kmt compare <source> <compare> [<schema>]")
