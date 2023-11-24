@@ -141,12 +141,17 @@ func (table) downScript(line string) bool {
 	return strings.Contains(line, "DROP")
 }
 
-func (table) downReferenceScript(line string) bool {
-	return strings.Contains(line, "pkey") || strings.Contains(line, "fkey") || strings.Contains(line, "pk") || strings.Contains(line, "fk")
+func (t table) downReferenceScript(line string) bool {
+	return t.downForeignkey(line) || strings.Contains(line, "pk") || strings.Contains(line, "pkey")
 }
 
 func (table) downForeignkey(line string) bool {
-	return strings.Contains(line, "fkey") || strings.Contains(line, "fk")
+	return strings.Contains(line, "fkey") ||
+		strings.Contains(line, "fk") ||
+		strings.Contains(line, "foreign") ||
+		strings.Contains(line, "foreign_key") ||
+		strings.Contains(line, "foreignkey") ||
+		strings.Contains(line, "foreignk")
 }
 
 func (table) foreignScript(line string) bool {

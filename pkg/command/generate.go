@@ -214,6 +214,10 @@ func (g generate) Call(schema string) error {
 
 			version++
 
+			if script.Reference.UpScript == "" {
+				continue
+			}
+
 			err = os.WriteFile(fmt.Sprintf("%s/%s/%d_primary_key_%s.up.sql", g.config.Folder, schema, version, tableName), []byte(script.Reference.UpScript), 0777)
 			if err != nil {
 				progress.Stop()
