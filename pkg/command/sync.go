@@ -26,7 +26,7 @@ func NewSync(config config.Migration) sync {
 }
 
 func (s sync) Run(cluster string, schema string) error {
-	lists, ok := s.config.Cluster[cluster]
+	lists, ok := s.config.Clusters[cluster]
 	if !ok {
 		s.errorColor.Printf("Cluster '%s' isn't defined\n", s.boldFont.Sprint(cluster))
 

@@ -254,22 +254,29 @@ func main() {
 
 					number := 1
 					db := ctx.Args().Get(0)
-					source, ok := config.Migration.Connections[db]
+					clusters, ok := config.Migration.Clusters[db]
 					if !ok {
 						return fmt.Errorf("config for '%s' not found", db)
 					}
 
-					for k := range source.Schemas {
-						version := cmd.Call(db, k)
-						if version == 0 {
-							return nil
+					for _, c := range clusters {
+						source, ok := config.Migration.Connections[c]
+						if !ok {
+							return fmt.Errorf("config for '%s' not found", c)
 						}
 
-						t.AppendRows([]table.Row{
-							{number, db, k, version},
-						})
+						for k := range source.Schemas {
+							version := cmd.Call(db, k)
+							if version == 0 {
+								return nil
+							}
 
-						number++
+							t.AppendRows([]table.Row{
+								{number, c, k, version},
+							})
+
+							number++
+						}
 					}
 
 					t.Render()
