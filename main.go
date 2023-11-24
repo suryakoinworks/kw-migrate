@@ -332,7 +332,7 @@ func main() {
 
 					number := 1
 					for k := range source.Schemas {
-						for l := range source.Schemas {
+						for l := range compare.Schemas {
 							if k != l {
 								continue
 							}
@@ -342,8 +342,16 @@ func main() {
 								return nil
 							}
 
+							sync := vSource == vCompare
+							var status string
+							if sync {
+								status = color.New(color.FgGreen).Sprint("✔")
+							} else {
+								status = color.New(color.FgRed, color.Bold).Sprint("x")
+							}
+
 							t.AppendRows([]table.Row{
-								{number, k, vSource, vCompare, vSource == vCompare},
+								{number, k, vSource, vCompare, status},
 							})
 
 							number++

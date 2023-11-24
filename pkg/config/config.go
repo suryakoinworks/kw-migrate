@@ -84,7 +84,7 @@ func Parse(path string) Config {
 	os.MkdirAll(config.Migration.Folder, 0777)
 
 	for k, cs := range config.Migration.Connections {
-		for _, v := range cs.Schemas {
+		for x, v := range cs.Schemas {
 			_, ok := v["excludes"]
 			if !ok {
 				v["excludes"] = []string{}
@@ -95,7 +95,7 @@ func Parse(path string) Config {
 				v["with_data"] = []string{}
 			}
 
-			config.Migration.Connections[k].Schemas[k] = v
+			config.Migration.Connections[k].Schemas[x] = v
 		}
 	}
 
