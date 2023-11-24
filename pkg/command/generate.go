@@ -35,7 +35,14 @@ func (g generate) Call(schema string) error {
 	progress.Suffix = fmt.Sprintf(" Listing tables on schema %s...", g.successColor.Sprint(schema))
 	progress.Start()
 
-	_, ok := g.config.Schemas[schema]
+	source, ok := g.config.Connections[g.config.Source]
+	if !ok {
+		g.errorColor.Printf("Config for '%s' not found", g.boldFont.Sprint(g.config.Source))
+
+		return nil
+	}
+
+	schemaConfig, ok := source.Schemas[schema]
 	if !ok {
 		g.errorColor.Printf("Schema '%s' not found\n", g.boldFont.Sprint(schema))
 
@@ -162,27 +169,20 @@ func (g generate) Call(schema string) error {
 		version++
 	}
 
-	source, ok := g.config.Connections[g.config.Source]
-	if !ok {
-		g.errorColor.Printf("Config for '%s' not found", g.boldFont.Sprint(g.config.Source))
-
-		return nil
-	}
-
-	g.config.Schemas[schema]["tables"] = db.NewSchema(g.connection).ListTables(schema, g.config.Schemas[schema]["excludes"]...)
+	schemaConfig["tables"] = db.NewSchema(g.connection).ListTables(schema, schemaConfig["excludes"]...)
 
 	ddlTool := db.NewTable(g.config.PgDump, source)
 	cDdl := make(chan db.Ddl)
 
 	go func(version int64, schema string, cDdl chan<- db.Ddl) {
-		for _, tableName := range g.config.Schemas[schema]["tables"] {
+		for _, tableName := range schemaConfig["tables"] {
 			progress.Stop()
 			progress = spinner.New(spinner.CharSets[config.SPINER_INDEX], config.SPINER_DURATION)
 			progress.Suffix = fmt.Sprintf(" Processing table %s on schema %s...", g.successColor.Sprint(tableName), g.successColor.Sprint(schema))
 			progress.Start()
 
 			schemaOnly := true
-			for _, d := range g.config.Schemas[schema]["with_data"] {
+			for _, d := range schemaConfig["with_data"] {
 				if d == tableName {
 					schemaOnly = false
 
@@ -214,6 +214,10 @@ func (g generate) Call(schema string) error {
 
 			version++
 
+			if script.Reference.UpScript == "" {
+				continue
+			}
+
 			err = os.WriteFile(fmt.Sprintf("%s/%s/%d_primary_key_%s.up.sql", g.config.Folder, schema, version, tableName), []byte(script.Reference.UpScript), 0777)
 			if err != nil {
 				progress.Stop()
@@ -238,7 +242,7 @@ func (g generate) Call(schema string) error {
 		close(cDdl)
 	}(version, schema, cDdl)
 
-	version = version + int64(len(g.config.Schemas[schema]["tables"])*2)
+	version = version + int64(len(schemaConfig["tables"])*2)
 
 	for ddl := range cDdl {
 		if ddl.ForeignKey.UpScript == "" {

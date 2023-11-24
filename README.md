@@ -96,17 +96,17 @@ migration:
             name: database
             user: user
             password: s3cret
-    schemas:
-        public:
-            excludes:
-                - exclude_tables
-            with_data:
-                - data_included_tables
-        user:
-            excludes:
-                - exclude_tables
-            with_data:
-                - data_included_tables
+            schemas:
+                public:
+                    excludes:
+                        - exclude_tables
+                    with_data:
+                        - data_included_tables
+                user:
+                    excludes:
+                        - exclude_tables
+                    with_data:
+                        - data_included_tables
 ```
 
 - Create new migration or generate from `source`

@@ -24,13 +24,6 @@ func NewCopy(config config.Migration) copy {
 }
 
 func (c copy) Call(schema string, source string, destination string) error {
-	_, ok := c.config.Schemas[schema]
-	if !ok {
-		c.errorColor.Printf("Schema '%s' not found\n", c.boldFont.Sprint(schema))
-
-		return nil
-	}
-
 	sourceConfig, ok := c.config.Connections[source]
 	if !ok {
 		c.errorColor.Printf("Database connection '%s' not found\n", c.boldFont.Sprint(source))
@@ -38,9 +31,23 @@ func (c copy) Call(schema string, source string, destination string) error {
 		return nil
 	}
 
+	_, ok = sourceConfig.Schemas[schema]
+	if !ok {
+		c.errorColor.Printf("Schema '%s' not found on %s\n", c.boldFont.Sprint(schema), c.boldFont.Sprint(source))
+
+		return nil
+	}
+
 	destinationConfig, ok := c.config.Connections[destination]
 	if !ok {
 		c.errorColor.Printf("Database connection '%s' not found\n", c.boldFont.Sprint(destination))
+
+		return nil
+	}
+
+	_, ok = destinationConfig.Schemas[schema]
+	if !ok {
+		c.errorColor.Printf("Schema '%s' not found on %s\n", c.boldFont.Sprint(schema), c.boldFont.Sprint(destination))
 
 		return nil
 	}

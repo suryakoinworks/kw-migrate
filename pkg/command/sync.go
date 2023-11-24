@@ -33,22 +33,32 @@ func (s sync) Run(cluster string, schema string) error {
 		return nil
 	}
 
-	connections := map[string]config.Connection{}
-	for _, c := range lists {
-		if s.config.Source == c {
-			continue
+	connection := make(chan config.Connection)
+	name := make(chan string)
+
+	go func(source string, conns []string, cConfigs map[string]config.Connection, connection chan<- config.Connection, name chan<- string) {
+		for _, c := range conns {
+			if source == c {
+				continue
+			}
+
+			x, ok := cConfigs[c]
+			if !ok {
+				s.errorColor.Printf("Connection '%s' isn't defined\n", s.boldFont.Sprint(c))
+
+				close(connection)
+
+				break
+			}
+
+			connection <- x
+			name <- c
 		}
 
-		if _, ok := s.config.Connections[c]; !ok {
-			s.errorColor.Printf("Connection '%s' isn't defined\n", s.boldFont.Sprint(c))
+		close(connection)
+	}(s.config.Source, lists, s.config.Connections, connection, name)
 
-			return nil
-		}
-
-		connections[c] = s.config.Connections[c]
-	}
-
-	for i, source := range connections {
+	for source := range connection {
 		db, err := config.NewConnection(source)
 		if err != nil {
 			s.errorColor.Println(err.Error())
@@ -59,7 +69,7 @@ func (s sync) Run(cluster string, schema string) error {
 		migrator := config.NewMigrator(db, source.Name, schema, fmt.Sprintf("%s/%s", s.config.Folder, schema))
 
 		progress := spinner.New(spinner.CharSets[config.SPINER_INDEX], config.SPINER_DURATION)
-		progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", s.boldFont.Sprint(i), s.boldFont.Sprint(schema))
+		progress.Suffix = fmt.Sprintf(" Running migrations for %s on %s schema", s.boldFont.Sprint(<-name), s.boldFont.Sprint(schema))
 		progress.Start()
 
 		err = migrator.Up()

@@ -22,20 +22,20 @@ type (
 	}
 
 	Migration struct {
-		PgDump      string                         `yaml:"pg_dump"`
-		Folder      string                         `yaml:"folder"`
-		Source      string                         `yaml:"source"`
-		Cluster     map[string][]string            `yaml:"clusters"`
-		Connections map[string]Connection          `yaml:"connections"`
-		Schemas     map[string]map[string][]string `yaml:"schemas"`
+		PgDump      string                `yaml:"pg_dump"`
+		Folder      string                `yaml:"folder"`
+		Source      string                `yaml:"source"`
+		Cluster     map[string][]string   `yaml:"clusters"`
+		Connections map[string]Connection `yaml:"connections"`
 	}
 
 	Connection struct {
-		Host     string `yaml:"host"`
-		Port     int    `yaml:"port"`
-		Name     string `yaml:"name"`
-		User     string `yaml:"user"`
-		Password string `yaml:"password"`
+		Host     string                         `yaml:"host"`
+		Port     int                            `yaml:"port"`
+		Name     string                         `yaml:"name"`
+		User     string                         `yaml:"user"`
+		Password string                         `yaml:"password"`
+		Schemas  map[string]map[string][]string `yaml:"schemas"`
 	}
 )
 
@@ -83,18 +83,20 @@ func Parse(path string) Config {
 
 	os.MkdirAll(config.Migration.Folder, 0777)
 
-	for k, v := range config.Migration.Schemas {
-		_, ok := v["excludes"]
-		if !ok {
-			v["excludes"] = []string{}
-		}
+	for k, cs := range config.Migration.Connections {
+		for _, v := range cs.Schemas {
+			_, ok := v["excludes"]
+			if !ok {
+				v["excludes"] = []string{}
+			}
 
-		_, ok = v["with_data"]
-		if !ok {
-			v["with_data"] = []string{}
-		}
+			_, ok = v["with_data"]
+			if !ok {
+				v["with_data"] = []string{}
+			}
 
-		config.Migration.Schemas[k] = v
+			config.Migration.Connections[k].Schemas[k] = v
+		}
 	}
 
 	return config
