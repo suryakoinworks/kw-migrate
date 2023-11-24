@@ -66,7 +66,7 @@ func (r run) Call(source string, schema string, step int) error {
 	version, _, _ := migrator.Version()
 	valid := false
 
-	migrations := make([]string, step)
+	migrations := []string{}
 	number := 0
 	for _, file := range files {
 		f := strings.Split(file.Name(), "_")
@@ -82,6 +82,12 @@ func (r run) Call(source string, schema string, step int) error {
 
 			number++
 		}
+	}
+
+	if len(migrations) == 0 {
+		r.successColor.Printf("Database %s schema %s is up to date\n", r.boldFont.Sprint(source), r.boldFont.Sprint(schema))
+
+		return nil
 	}
 
 	for _, v := range migrations {
