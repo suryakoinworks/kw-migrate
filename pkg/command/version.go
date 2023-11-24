@@ -31,7 +31,7 @@ func (v version) Call(source string, schema string) uint {
 		return 0
 	}
 
-	_, ok = v.config.Schemas[schema]
+	_, ok = dbConfig.Schemas[schema]
 	if !ok {
 		v.errorColor.Printf("Schema '%s' not found\n", v.boldFont.Sprint(schema))
 

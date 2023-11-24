@@ -205,7 +205,7 @@ func main() {
 					}
 
 					waitGroup := sync.WaitGroup{}
-					for k := range cfg.Migration.Schemas {
+					for k := range source.Schemas {
 						waitGroup.Add(1)
 						go func(schema string, wg *sync.WaitGroup) {
 							cmd.Call(schema)
@@ -254,7 +254,12 @@ func main() {
 
 					number := 1
 					db := ctx.Args().Get(0)
-					for k := range config.Migration.Schemas {
+					source, ok := config.Migration.Connections[db]
+					if !ok {
+						return fmt.Errorf("config for '%s' not found", db)
+					}
+
+					for k := range source.Schemas {
 						version := cmd.Call(db, k)
 						if version == 0 {
 							return nil
@@ -288,14 +293,31 @@ func main() {
 					t := table.NewWriter()
 					t.SetOutputMirror(os.Stdout)
 
-					source := ctx.Args().Get(0)
-					compare := ctx.Args().Get(1)
+					source, ok := config.Migration.Connections[ctx.Args().Get(0)]
+					if !ok {
+						return fmt.Errorf("config for '%s' not found", ctx.Args().Get(0))
+					}
 
-					t.AppendHeader(table.Row{"No", "Schema", fmt.Sprintf("%s Version", source), fmt.Sprintf("%s Version", compare), "Sync"})
+					compare, ok := config.Migration.Connections[ctx.Args().Get(1)]
+					if !ok {
+						return fmt.Errorf("config for '%s' not found", ctx.Args().Get(1))
+					}
+
+					t.AppendHeader(table.Row{"No", "Schema", fmt.Sprintf("%s Version", ctx.Args().Get(0)), fmt.Sprintf("%s Version", ctx.Args().Get(1)), "Sync"})
 
 					if ctx.NArg() == 3 {
 						schema := ctx.Args().Get(2)
-						vSource, vCompare := cmd.Call(source, compare, schema)
+						_, ok := source.Schemas[schema]
+						if !ok {
+							return fmt.Errorf("schema '%s' not found on %s", schema, ctx.Args().Get(0))
+						}
+
+						_, ok = compare.Schemas[schema]
+						if !ok {
+							return fmt.Errorf("schema '%s' not found on %s", schema, ctx.Args().Get(1))
+						}
+
+						vSource, vCompare := cmd.Call(ctx.Args().Get(0), ctx.Args().Get(1), schema)
 						if vSource == 0 || vCompare == 0 {
 							return nil
 						}
@@ -309,17 +331,23 @@ func main() {
 					}
 
 					number := 1
-					for k := range config.Migration.Schemas {
-						vSource, vCompare := cmd.Call(source, compare, k)
-						if vSource == 0 || vCompare == 0 {
-							return nil
+					for k := range source.Schemas {
+						for l := range source.Schemas {
+							if k != l {
+								continue
+							}
+
+							vSource, vCompare := cmd.Call(ctx.Args().Get(0), ctx.Args().Get(1), k)
+							if vSource == 0 || vCompare == 0 {
+								return nil
+							}
+
+							t.AppendRows([]table.Row{
+								{number, k, vSource, vCompare, vSource == vCompare},
+							})
+
+							number++
 						}
-
-						t.AppendRows([]table.Row{
-							{number, k, vSource, vCompare, vSource == vCompare},
-						})
-
-						number++
 					}
 
 					t.Render()

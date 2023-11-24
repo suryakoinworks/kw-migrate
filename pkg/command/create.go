@@ -26,9 +26,23 @@ func NewCreate(config config.Migration) create {
 }
 
 func (c create) Call(schema string, name string) error {
-	_, ok := c.config.Schemas[schema]
-	if !ok {
-		c.errorColor.Printf("Schema '%s' not found\n", c.boldFont.Sprint(schema))
+	valid := false
+	for _, c := range c.config.Connections {
+		for s := range c.Schemas {
+			if s == schema {
+				valid = true
+
+				break
+			}
+		}
+
+		if valid {
+			break
+		}
+	}
+
+	if !valid {
+		c.errorColor.Printf("Schema '%s' not found in all connections\n", c.boldFont.Sprint(schema))
 
 		return nil
 	}

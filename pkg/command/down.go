@@ -33,7 +33,7 @@ func (d down) Call(source string, schema string) error {
 		return nil
 	}
 
-	_, ok = d.config.Schemas[schema]
+	_, ok = dbConfig.Schemas[schema]
 	if !ok {
 		d.errorColor.Printf("Schema '%s' not found\n", schema)
 

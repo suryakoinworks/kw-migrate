@@ -38,9 +38,16 @@ func (c compare) Call(source string, compare string, schema string) (uint, uint)
 		return 0, 0
 	}
 
-	_, ok = c.config.Schemas[schema]
+	_, ok = dbSource.Schemas[schema]
 	if !ok {
-		c.errorColor.Printf("Schema '%s' not found\n", c.boldFont.Sprint(schema))
+		c.errorColor.Printf("Schema '%s' not found on %s\n", c.boldFont.Sprint(schema), c.boldFont.Sprint(source))
+
+		return 0, 0
+	}
+
+	_, ok = dbCompare.Schemas[schema]
+	if !ok {
+		c.errorColor.Printf("Schema '%s' not found on %s\n", c.boldFont.Sprint(schema), c.boldFont.Sprint(compare))
 
 		return 0, 0
 	}

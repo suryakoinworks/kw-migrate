@@ -64,7 +64,7 @@ func (s set) Call(source string, schema string, version int) error {
 		return nil
 	}
 
-	_, ok = s.config.Schemas[schema]
+	_, ok = dbConfig.Schemas[schema]
 	if !ok {
 		s.errorColor.Printf("Schema '%s' not found\n", s.boldFont.Sprint(schema))
 

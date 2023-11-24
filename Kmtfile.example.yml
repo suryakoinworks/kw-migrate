@@ -13,9 +13,9 @@ migration:
       name: asgard
       user: user
       password: s3cret
-  schemas:
-    activity:
-      excludes:
-        - virtual_accounts
-      with_data:
-        - admin_params
+      schemas:
+        activity:
+          excludes:
+            - virtual_accounts
+          with_data:
+            - admin_params

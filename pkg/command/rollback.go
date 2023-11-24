@@ -37,7 +37,7 @@ func (r rollback) Call(source string, schema string, step int) error {
 		return nil
 	}
 
-	_, ok = r.config.Schemas[schema]
+	_, ok = dbConfig.Schemas[schema]
 	if !ok {
 		r.errorColor.Printf("Schema '%s' not found\n", r.boldFont.Sprint(schema))
 
