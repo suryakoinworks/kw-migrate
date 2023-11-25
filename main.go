@@ -266,7 +266,7 @@ func main() {
 						}
 
 						for k := range source.Schemas {
-							version := cmd.Call(db, k)
+							version := cmd.Call(c, k)
 							if version == 0 {
 								return nil
 							}
