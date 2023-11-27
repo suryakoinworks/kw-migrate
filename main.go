@@ -235,7 +235,7 @@ func main() {
 
 					t := table.NewWriter()
 					t.SetOutputMirror(os.Stdout)
-					t.AppendHeader(table.Row{"No", "Connection", "Schema", "Version"})
+					t.AppendHeader(table.Row{"No", "Connection", "Schema", "Migration File", "Version", "Sync"})
 
 					if ctx.NArg() == 2 {
 						db := ctx.Args().Get(0)
@@ -245,8 +245,27 @@ func main() {
 							return nil
 						}
 
+						files, err := os.ReadDir(fmt.Sprintf("%s/%s", config.Migration.Folder, schema))
+						if err != nil {
+							fmt.Println(err.Error())
+
+							return nil
+						}
+
+						tFiles := len(files)
+						file := strings.Split(files[tFiles-1].Name(), "_")
+						v, _ := strconv.Atoi(file[0])
+
+						sync := uint(v) == version
+						var status string
+						if sync {
+							status = color.New(color.FgGreen).Sprint("✔")
+						} else {
+							status = color.New(color.FgRed, color.Bold).Sprint("x")
+						}
+
 						t.AppendRows([]table.Row{
-							{1, db, schema, version},
+							{1, db, schema, v, version, status},
 						})
 						t.Render()
 
@@ -268,8 +287,27 @@ func main() {
 								return nil
 							}
 
+							files, err := os.ReadDir(fmt.Sprintf("%s/%s", config.Migration.Folder, k))
+							if err != nil {
+								fmt.Println(err.Error())
+
+								return nil
+							}
+
+							tFiles := len(files)
+							file := strings.Split(files[tFiles-1].Name(), "_")
+							v, _ := strconv.Atoi(file[0])
+
+							sync := uint(v) == version
+							var status string
+							if sync {
+								status = color.New(color.FgGreen).Sprint("✔")
+							} else {
+								status = color.New(color.FgRed, color.Bold).Sprint("x")
+							}
+
 							t.AppendRows([]table.Row{
-								{number, db, k, version},
+								{number, db, k, v, version, status},
 							})
 
 							number++
@@ -292,8 +330,27 @@ func main() {
 								return nil
 							}
 
+							files, err := os.ReadDir(fmt.Sprintf("%s/%s", config.Migration.Folder, k))
+							if err != nil {
+								fmt.Println(err.Error())
+
+								return nil
+							}
+
+							tFiles := len(files)
+							file := strings.Split(files[tFiles-1].Name(), "_")
+							v, _ := strconv.Atoi(file[0])
+
+							sync := uint(v) == version
+							var status string
+							if sync {
+								status = color.New(color.FgGreen).Sprint("✔")
+							} else {
+								status = color.New(color.FgRed, color.Bold).Sprint("x")
+							}
+
 							t.AppendRows([]table.Row{
-								{number, c, k, version},
+								{number, c, k, v, version, status},
 							})
 
 							number++
