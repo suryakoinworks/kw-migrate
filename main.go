@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/fatih/color"
@@ -310,7 +311,7 @@ func main() {
 						return fmt.Errorf("config for '%s' not found", ctx.Args().Get(1))
 					}
 
-					t.AppendHeader(table.Row{"No", "Schema", fmt.Sprintf("%s Version", ctx.Args().Get(0)), fmt.Sprintf("%s Version", ctx.Args().Get(1)), "Sync"})
+					t.AppendHeader(table.Row{"No", "Schema", "Migration File", fmt.Sprintf("%s Version", ctx.Args().Get(0)), fmt.Sprintf("%s Version", ctx.Args().Get(1)), "Sync"})
 
 					if ctx.NArg() == 3 {
 						schema := ctx.Args().Get(2)
@@ -329,8 +330,27 @@ func main() {
 							return nil
 						}
 
+						files, err := os.ReadDir(fmt.Sprintf("%s/%s", config.Migration.Folder, schema))
+						if err != nil {
+							fmt.Println(err.Error())
+
+							return nil
+						}
+
+						tFiles := len(files)
+						file := strings.Split(files[tFiles-1].Name(), "_")
+						version, _ := strconv.Atoi(file[0])
+
+						sync := uint(version) == vSource && vSource == vCompare
+						var status string
+						if sync {
+							status = color.New(color.FgGreen).Sprint("✔")
+						} else {
+							status = color.New(color.FgRed, color.Bold).Sprint("x")
+						}
+
 						t.AppendRows([]table.Row{
-							{1, schema, vSource, vCompare, vSource == vCompare},
+							{1, schema, version, vSource, vCompare, status},
 						})
 						t.Render()
 
@@ -349,7 +369,18 @@ func main() {
 								return nil
 							}
 
-							sync := vSource == vCompare
+							files, err := os.ReadDir(fmt.Sprintf("%s/%s", config.Migration.Folder, k))
+							if err != nil {
+								fmt.Println(err.Error())
+
+								return nil
+							}
+
+							tFiles := len(files)
+							file := strings.Split(files[tFiles-1].Name(), "_")
+							version, _ := strconv.Atoi(file[0])
+
+							sync := uint(version) == vSource && vSource == vCompare
 							var status string
 							if sync {
 								status = color.New(color.FgGreen).Sprint("✔")
@@ -358,7 +389,7 @@ func main() {
 							}
 
 							t.AppendRows([]table.Row{
-								{number, k, vSource, vCompare, status},
+								{number, k, version, vSource, vCompare, status},
 							})
 
 							number++
