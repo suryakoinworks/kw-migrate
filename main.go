@@ -192,7 +192,7 @@ func main() {
 					cfg := config.Parse(config.CONFIG_FILE)
 					source, ok := cfg.Migration.Connections[cfg.Migration.Source]
 					if !ok {
-						return fmt.Errorf("config for '%s' not found", cfg.Migration.Source)
+						return fmt.Errorf("source '%s' not found", cfg.Migration.Source)
 					}
 
 					db, err := config.NewConnection(source)
@@ -223,11 +223,11 @@ func main() {
 			{
 				Name:        "version",
 				Aliases:     []string{"v"},
-				Description: "version <db> [<schema>]",
+				Description: "version <db>/<cluster> [<schema>]",
 				Usage:       "Show migration version",
 				Action: func(ctx *cli.Context) error {
 					if ctx.NArg() < 1 {
-						return errors.New("not enough arguments. Usage: kmt version <db> [<schema>]")
+						return errors.New("not enough arguments. Usage: kmt version <db>/<cluster> [<schema>]")
 					}
 
 					config := config.Parse(config.CONFIG_FILE)
@@ -257,13 +257,33 @@ func main() {
 					db := ctx.Args().Get(0)
 					clusters, ok := config.Migration.Clusters[db]
 					if !ok {
-						return fmt.Errorf("config for '%s' not found", db)
+						source, ok := config.Migration.Connections[db]
+						if !ok {
+							return fmt.Errorf("cluster/connection '%s' not found", db)
+						}
+
+						for k := range source.Schemas {
+							version := cmd.Call(db, k)
+							if version == 0 {
+								return nil
+							}
+
+							t.AppendRows([]table.Row{
+								{number, db, k, version},
+							})
+
+							number++
+						}
+
+						t.Render()
+
+						return nil
 					}
 
 					for _, c := range clusters {
 						source, ok := config.Migration.Connections[c]
 						if !ok {
-							return fmt.Errorf("config for '%s' not found", c)
+							return fmt.Errorf("connection for '%s' not found", c)
 						}
 
 						for k := range source.Schemas {
@@ -303,12 +323,12 @@ func main() {
 
 					source, ok := config.Migration.Connections[ctx.Args().Get(0)]
 					if !ok {
-						return fmt.Errorf("config for '%s' not found", ctx.Args().Get(0))
+						return fmt.Errorf("connection '%s' not found", ctx.Args().Get(0))
 					}
 
 					compare, ok := config.Migration.Connections[ctx.Args().Get(1)]
 					if !ok {
-						return fmt.Errorf("config for '%s' not found", ctx.Args().Get(1))
+						return fmt.Errorf("connection '%s' not found", ctx.Args().Get(1))
 					}
 
 					t.AppendHeader(table.Row{"No", "Schema", "Migration File", fmt.Sprintf("%s Version", ctx.Args().Get(0)), fmt.Sprintf("%s Version", ctx.Args().Get(1)), "Sync"})

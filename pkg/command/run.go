@@ -71,10 +71,8 @@ func (r run) Call(source string, schema string, step int) error {
 	for _, file := range files {
 		f := strings.Split(file.Name(), "_")
 		s, _ := strconv.Atoi(f[0])
-		if version == uint(s) {
+		if !valid && version == uint(s) {
 			valid = true
-
-			break
 		}
 
 		if valid && number < step {
