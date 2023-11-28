@@ -154,6 +154,21 @@ func main() {
 				},
 			},
 			{
+				Name:        "drop",
+				Aliases:     []string{"dp"},
+				Description: "drop <db> <schema>",
+				Usage:       "Drop migration",
+				Action: func(ctx *cli.Context) error {
+					if ctx.NArg() != 2 {
+						return errors.New("not enough arguments. Usage: kmt drop <db> <schema>")
+					}
+
+					config := config.Parse(config.CONFIG_FILE)
+
+					return command.NewDrop(config.Migration).Call(ctx.Args().Get(0), ctx.Args().Get(1))
+				},
+			},
+			{
 				Name:        "clean",
 				Aliases:     []string{"cl"},
 				Description: "clean <db> <schema>",

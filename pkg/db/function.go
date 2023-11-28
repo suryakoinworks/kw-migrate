@@ -37,7 +37,7 @@ func (s function) GenerateDdl(schema string) <-chan Migration {
 			channel <- Migration{
 				Name:       name,
 				UpScript:   definition,
-				DownScript: fmt.Sprintf("DROP FUNCTION IF EXISTS %s(%s);", name, params),
+				DownScript: fmt.Sprintf(SECURE_DROP_FUNCTION, name, params),
 			}
 		}
 

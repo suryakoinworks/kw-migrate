@@ -70,7 +70,7 @@ func (d down) Call(source string, schema string) error {
 
 	progress.Stop()
 
-	d.successColor.Printf("Migration on %s schema %s down successfully\n", d.boldFont.Sprint(source), d.boldFont.Sprint(schema))
+	d.successColor.Printf("Migration on %s schema %s tear down successfully\n", d.boldFont.Sprint(source), d.boldFont.Sprint(schema))
 
 	return err
 }

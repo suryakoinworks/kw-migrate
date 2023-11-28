@@ -43,7 +43,7 @@ func (s enum) GenerateDdl(schema string) <-chan Migration {
 			channel <- Migration{
 				Name:       shortName,
 				UpScript:   s.createDdl(name, values),
-				DownScript: fmt.Sprintf("DROP TYPE IF EXISTS %s;", name),
+				DownScript: fmt.Sprintf(SECURE_DROP_TYPE, name),
 			}
 		}
 

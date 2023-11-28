@@ -89,12 +89,14 @@ func (g generate) Call(schema string) error {
 
 	ddlTool := db.NewTable(g.config.PgDump, source)
 	cDdl := make(chan db.Ddl)
+	tTable := schemaTool.CountTable(schema, len(schemaConfig["excludes"]))
 
-	go func(version int64, schema string, cDdl chan<- db.Ddl, cTable <-chan string) {
+	go func(version int64, schema string, tTable int, cDdl chan<- db.Ddl, cTable <-chan string) {
+		count := 1
 		for tableName := range cTable {
 			progress.Stop()
 			progress = spinner.New(spinner.CharSets[config.SPINER_INDEX], config.SPINER_DURATION)
-			progress.Suffix = fmt.Sprintf(" Processing table %s on schema %s...", g.successColor.Sprint(tableName), g.successColor.Sprint(schema))
+			progress.Suffix = fmt.Sprintf(" Processing table %s (%d/%d) on schema %s...", g.successColor.Sprint(tableName), count, tTable, g.successColor.Sprint(schema))
 			progress.Start()
 
 			schemaOnly := true
@@ -153,12 +155,13 @@ func (g generate) Call(schema string) error {
 			}
 
 			version++
+			count++
 		}
 
 		close(cDdl)
-	}(version, schema, cDdl, cTable)
+	}(version, schema, tTable, cDdl, cTable)
 
-	version = (version - 4) + int64(schemaTool.CountTable(schema, len(schemaConfig["excludes"]))*2)
+	version = (version - 4) + int64(tTable*2)
 
 	for ddl := range cDdl {
 		if ddl.ForeignKey.UpScript == "" {
