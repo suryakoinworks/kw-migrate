@@ -3,7 +3,7 @@ package config
 import "time"
 
 const (
-	VERSION_STRING = "v1.5.5"
+	VERSION_STRING = "v1.6.0"
 
 	SPINER_INDEX    = 9
 	SPINER_DURATION = 77 * time.Millisecond

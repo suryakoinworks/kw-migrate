@@ -5,6 +5,7 @@ import (
 	"kmt/pkg/config"
 
 	"github.com/fatih/color"
+	gomigrate "github.com/golang-migrate/migrate/v4"
 )
 
 type copy struct {
@@ -95,21 +96,14 @@ func (c copy) Call(schema string, source string, destination string) error {
 		return nil
 	}
 
-	for {
-		err := destinationMigrator.Steps(1)
-		if err != nil {
-			c.errorColor.Println(err.Error())
+	err = destinationMigrator.Migrate(sourceVersion)
+	if err != nil && err == gomigrate.ErrNoChange {
+		c.successColor.Printf("Database %s schema %s is up to date\n", c.boldFont.Sprint(source), c.boldFont.Sprint(schema))
 
-			return nil
-		}
-
-		version, _, _ := destinationMigrator.Version()
-		if version == destinationVersion || destinationVersion > version {
-			break
-		}
+		return nil
 	}
 
-	c.successColor.Printf("Migration for schema %s on %s set to %s (%s version)\n", c.boldFont.Sprint(schema), c.boldFont.Sprint(destination), c.boldFont.Sprint(sourceVersion), c.boldFont.Sprint(source))
+	c.successColor.Printf("Migration for schema %s on %s set to %s (same as %s version)\n", c.boldFont.Sprint(schema), c.boldFont.Sprint(destination), c.boldFont.Sprint(sourceVersion), c.boldFont.Sprint(source))
 
 	return nil
 }

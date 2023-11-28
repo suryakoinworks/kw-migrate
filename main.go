@@ -139,6 +139,29 @@ func main() {
 				},
 			},
 			{
+				Name:        "migrate",
+				Aliases:     []string{"mg"},
+				Description: "migrate <db> <schema> <version>",
+				Usage:       "Migrate schema to specific version",
+				Action: func(ctx *cli.Context) error {
+					if ctx.NArg() != 3 {
+						return errors.New("not enough arguments. Usage: kmt migrate <db> <schema> <version>")
+					}
+
+					config := config.Parse(config.CONFIG_FILE)
+					errorColor := color.New(color.FgRed)
+
+					n, err := strconv.ParseInt(ctx.Args().Get(2), 10, 0)
+					if err != nil {
+						errorColor.Println("Version is not number")
+
+						return nil
+					}
+
+					return command.NewMigrate(config.Migration).Call(ctx.Args().Get(0), ctx.Args().Get(1), int(n))
+				},
+			},
+			{
 				Name:        "down",
 				Aliases:     []string{"dw"},
 				Description: "down <db> <schema>",
