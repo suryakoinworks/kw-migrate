@@ -11,7 +11,7 @@ import (
 )
 
 type (
-	table struct {
+	Table struct {
 		command string
 		config  config.Connection
 	}
@@ -24,11 +24,11 @@ type (
 	}
 )
 
-func NewTable(command string, config config.Connection) table {
-	return table{command: command, config: config}
+func NewTable(command string, config config.Connection) Table {
+	return Table{command: command, config: config}
 }
 
-func (t table) Generate(name string, schemaOnly bool) Ddl {
+func (t Table) Generate(name string, schemaOnly bool) Ddl {
 	options := []string{
 		"--no-comments",
 		"--no-publications",
@@ -138,30 +138,30 @@ func (t table) Generate(name string, schemaOnly bool) Ddl {
 	}
 }
 
-func (table) skip(line string) bool {
+func (Table) skip(line string) bool {
 	return line == "" || strings.HasPrefix(line, "--") || strings.HasPrefix(line, "SET ") || strings.HasPrefix(line, "SELECT ")
 }
 
-func (table) downScript(line string) bool {
+func (Table) downScript(line string) bool {
 	return strings.Contains(line, "DROP")
 }
 
-func (t table) downReferenceScript(line string) bool {
+func (t Table) downReferenceScript(line string) bool {
 	regex := regexp.MustCompile(`fkey|fk|foreign|foreign_key|foreignkey|foreignk|pkey|pk`)
 
 	return regex.MatchString(line)
 }
 
-func (table) downForeignkey(line string) bool {
+func (Table) downForeignkey(line string) bool {
 	regex := regexp.MustCompile(`fkey|fk|foreign|foreign_key|foreignkey|foreignk`)
 
 	return regex.MatchString(line)
 }
 
-func (table) foreignScript(line string) bool {
+func (Table) foreignScript(line string) bool {
 	return strings.Contains(line, FOREIGN_KEY)
 }
 
-func (table) refereceScript(line string, n int, lines []string) bool {
+func (Table) refereceScript(line string, n int, lines []string) bool {
 	return strings.Contains(line, ALTER_TABLE) && strings.Contains(lines[n+1], ADD_CONSTRAINT)
 }

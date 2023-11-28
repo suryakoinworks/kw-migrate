@@ -6,19 +6,32 @@ import (
 	"kmt/pkg/config"
 	"kmt/pkg/db"
 	"os"
+	iSync "sync"
 	"time"
 
 	"github.com/briandowns/spinner"
 	"github.com/fatih/color"
 )
 
-type generate struct {
-	config       config.Migration
-	connection   *sql.DB
-	boldFont     *color.Color
-	errorColor   *color.Color
-	successColor *color.Color
-}
+type (
+	generate struct {
+		config       config.Migration
+		connection   *sql.DB
+		boldFont     *color.Color
+		errorColor   *color.Color
+		successColor *color.Color
+	}
+
+	migration struct {
+		wg         *iSync.WaitGroup
+		tableTool  db.Table
+		folder     string
+		version    int64
+		schema     string
+		schemaOnly bool
+		table      string
+	}
+)
 
 func NewGenerate(config config.Migration, connection *sql.DB) generate {
 	return generate{
@@ -27,6 +40,50 @@ func NewGenerate(config config.Migration, connection *sql.DB) generate {
 		boldFont:     color.New(color.Bold),
 		errorColor:   color.New(color.FgRed),
 		successColor: color.New(color.FgGreen),
+	}
+}
+
+func do(cMigration <-chan migration, cDdl chan<- db.Ddl) {
+	for m := range cMigration {
+		script := m.tableTool.Generate(fmt.Sprintf("%s.%s", m.schema, m.table), m.schemaOnly)
+
+		cDdl <- script
+
+		err := os.WriteFile(fmt.Sprintf("%s/%s/%d_table_%s.up.sql", m.folder, m.schema, m.version, m.table), []byte(script.Definition.UpScript), 0777)
+		if err != nil {
+			m.wg.Done()
+
+			return
+		}
+
+		err = os.WriteFile(fmt.Sprintf("%s/%s/%d_table_%s.down.sql", m.folder, m.schema, m.version, m.table), []byte(script.Definition.DownScript), 0777)
+		if err != nil {
+			m.wg.Done()
+
+			return
+		}
+
+		if script.Reference.UpScript == "" {
+			m.wg.Done()
+
+			return
+		}
+
+		err = os.WriteFile(fmt.Sprintf("%s/%s/%d_primary_key_%s.up.sql", m.folder, m.schema, m.version+1, m.table), []byte(script.Reference.UpScript), 0777)
+		if err != nil {
+			m.wg.Done()
+
+			return
+		}
+
+		err = os.WriteFile(fmt.Sprintf("%s/%s/%d_primary_key_%s.down.sql", m.folder, m.schema, m.version+1, m.table), []byte(script.Reference.DownScript), 0777)
+		if err != nil {
+			m.wg.Done()
+
+			return
+		}
+
+		m.wg.Done()
 	}
 }
 
@@ -54,8 +111,8 @@ func (g generate) Call(schema string) error {
 	version := time.Now().Unix()
 
 	progress.Stop()
-	progress = spinner.New(spinner.CharSets[config.SPINER_INDEX], config.SPINER_DURATION)
 	progress.Suffix = fmt.Sprintf(" Processing enums on schema %s...", g.successColor.Sprint(schema))
+	progress.Start()
 
 	udts := db.NewEnum(g.connection).GenerateDdl(schema)
 	for s := range udts {
@@ -92,6 +149,13 @@ func (g generate) Call(schema string) error {
 	tTable := schemaTool.CountTable(schema, len(schemaConfig["excludes"]))
 
 	go func(version int64, schema string, tTable int, cDdl chan<- db.Ddl, cTable <-chan string) {
+		cMigration := make(chan migration)
+		wg := iSync.WaitGroup{}
+
+		for i := 1; i <= 5; i++ {
+			go do(cMigration, cDdl)
+		}
+
 		count := 1
 		for tableName := range cTable {
 			progress.Stop()
@@ -108,55 +172,22 @@ func (g generate) Call(schema string) error {
 				}
 			}
 
-			script := ddlTool.Generate(fmt.Sprintf("%s.%s", schema, tableName), schemaOnly)
+			wg.Add(1)
 
-			cDdl <- script
-
-			err := os.WriteFile(fmt.Sprintf("%s/%s/%d_table_%s.up.sql", g.config.Folder, schema, version, tableName), []byte(script.Definition.UpScript), 0777)
-			if err != nil {
-				progress.Stop()
-
-				g.errorColor.Println(err.Error())
-
-				return
+			cMigration <- migration{
+				wg:         &wg,
+				tableTool:  ddlTool,
+				folder:     g.config.Folder,
+				version:    version,
+				schema:     schema,
+				schemaOnly: schemaOnly,
+				table:      tableName,
 			}
 
-			err = os.WriteFile(fmt.Sprintf("%s/%s/%d_table_%s.down.sql", g.config.Folder, schema, version, tableName), []byte(script.Definition.DownScript), 0777)
-			if err != nil {
-				progress.Stop()
-
-				g.errorColor.Println(err.Error())
-
-				return
-			}
-
-			version++
-
-			if script.Reference.UpScript == "" {
-				continue
-			}
-
-			err = os.WriteFile(fmt.Sprintf("%s/%s/%d_primary_key_%s.up.sql", g.config.Folder, schema, version, tableName), []byte(script.Reference.UpScript), 0777)
-			if err != nil {
-				progress.Stop()
-
-				g.errorColor.Println(err.Error())
-
-				return
-			}
-
-			err = os.WriteFile(fmt.Sprintf("%s/%s/%d_primary_key_%s.down.sql", g.config.Folder, schema, version, tableName), []byte(script.Reference.DownScript), 0777)
-			if err != nil {
-				progress.Stop()
-
-				g.errorColor.Println(err.Error())
-
-				return
-			}
-
-			version++
+			version += 2
 			count++
 		}
+		wg.Wait()
 
 		close(cDdl)
 	}(version, schema, tTable, cDdl, cTable)
@@ -190,8 +221,8 @@ func (g generate) Call(schema string) error {
 	}
 
 	progress.Stop()
-	progress = spinner.New(spinner.CharSets[config.SPINER_INDEX], config.SPINER_DURATION)
 	progress.Suffix = fmt.Sprintf(" Processing functions on schema %s...", g.successColor.Sprint(schema))
+	progress.Start()
 
 	functions := db.NewFunction(g.connection).GenerateDdl(schema)
 	for s := range functions {
@@ -219,8 +250,8 @@ func (g generate) Call(schema string) error {
 	}
 
 	progress.Stop()
-	progress = spinner.New(spinner.CharSets[config.SPINER_INDEX], config.SPINER_DURATION)
 	progress.Suffix = fmt.Sprintf(" Processing views on schema %s...", g.successColor.Sprint(schema))
+	progress.Start()
 
 	views := db.NewView(g.connection).GenerateDdl(schema)
 	for s := range views {
@@ -248,8 +279,8 @@ func (g generate) Call(schema string) error {
 	}
 
 	progress.Stop()
-	progress = spinner.New(spinner.CharSets[config.SPINER_INDEX], config.SPINER_DURATION)
 	progress.Suffix = fmt.Sprintf(" Processing materialized views on schema %s...", g.successColor.Sprint(schema))
+	progress.Start()
 
 	mViews := db.NewMaterializedView(g.connection).GenerateDdl(schema)
 	for s := range mViews {
