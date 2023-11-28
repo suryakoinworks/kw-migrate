@@ -13,32 +13,36 @@ func NewMaterializedView(db *sql.DB) materialized {
 	return materialized{db: db}
 }
 
-func (s materialized) GenerateDdl(schema string) []Migration {
+func (s materialized) GenerateDdl(schema string) <-chan Migration {
+	cMigration := make(chan Migration)
 	rows, err := s.db.Query(fmt.Sprintf(QUERY_MATERIALIZED_VIEW, schema))
 	if err != nil {
 		fmt.Println(err.Error())
 
-		return []Migration{}
+		return cMigration
 	}
-	defer rows.Close()
 
-	migrations := []Migration{}
-	for rows.Next() {
-		var name string
-		var definition string
-		err = rows.Scan(&name, &definition)
-		if err != nil {
-			fmt.Println(err.Error())
+	go func(result *sql.Rows, channel chan<- Migration) {
+		for result.Next() {
+			var name string
+			var definition string
+			err = result.Scan(&name, &definition)
+			if err != nil {
+				fmt.Println(err.Error())
 
-			continue
+				continue
+			}
+
+			channel <- Migration{
+				Name:       name,
+				UpScript:   definition,
+				DownScript: fmt.Sprintf(SECURE_DROP_VIEW, name),
+			}
 		}
 
-		migrations = append(migrations, Migration{
-			Name:       name,
-			UpScript:   definition,
-			DownScript: fmt.Sprintf("DROP VIEW IF EXISTS %s;", name),
-		})
-	}
+		close(channel)
+		rows.Close()
+	}(rows, cMigration)
 
-	return migrations
+	return cMigration
 }

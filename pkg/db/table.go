@@ -5,6 +5,7 @@ import (
 	"kmt/pkg/config"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -58,12 +59,12 @@ func (t table) Generate(name string, schemaOnly bool) Ddl {
 	cli.Env = os.Environ()
 	cli.Env = append(cli.Env, fmt.Sprintf("PGPASSWORD=%s", t.config.Password))
 
-	var upScript []string
-	var downScript []string
-	var upReferenceScript []string
-	var downReferenceScript []string
-	var upForeignScript []string
-	var downForeignScript []string
+	var upScript strings.Builder
+	var downScript strings.Builder
+	var upReferenceScript strings.Builder
+	var downReferenceScript strings.Builder
+	var upForeignScript strings.Builder
+	var downForeignScript strings.Builder
 	var skip bool = false
 
 	result, _ := cli.CombinedOutput()
@@ -78,25 +79,29 @@ func (t table) Generate(name string, schemaOnly bool) Ddl {
 		if t.downScript(line) {
 			if t.downReferenceScript(line) {
 				if t.downForeignkey(line) {
-					downForeignScript = append(downForeignScript, line)
+					downForeignScript.WriteString(line)
 				} else {
-					downReferenceScript = append(downReferenceScript, line)
+					downReferenceScript.WriteString(line)
 				}
 			} else {
-				downScript = append(downScript, line)
+				downScript.WriteString(line)
+				downScript.WriteString("\n")
 			}
 		} else {
 			if t.refereceScript(line, n, lines) {
 				if t.foreignScript(lines[n+1]) {
-					upForeignScript = append(upForeignScript, line)
-					upForeignScript = append(upForeignScript, lines[n+1])
+					upForeignScript.WriteString(line)
+					upForeignScript.WriteString(lines[n+1])
 				} else {
-					upReferenceScript = append(upReferenceScript, line)
-					upReferenceScript = append(upReferenceScript, lines[n+1])
+					upReferenceScript.WriteString(line)
+					upReferenceScript.WriteString("\n")
+					upReferenceScript.WriteString(lines[n+1])
+					upReferenceScript.WriteString("\n")
 				}
 				skip = true
 			} else {
-				upScript = append(upScript, line)
+				upScript.WriteString(line)
+				upScript.WriteString("\n")
 			}
 		}
 	}
@@ -107,28 +112,28 @@ func (t table) Generate(name string, schemaOnly bool) Ddl {
 			UpScript: strings.Replace(
 				strings.Replace(
 					strings.Replace(
-						strings.Join(upScript, "\n"),
-						config.CREATE_TABLE,
-						config.SECURE_CREATE_TABLE,
+						upScript.String(),
+						CREATE_TABLE,
+						SECURE_CREATE_TABLE,
 						-1,
 					),
-					config.CREATE_SEQUENCE,
-					config.SECURE_CREATE_SEQUENCE,
+					CREATE_SEQUENCE,
+					SECURE_CREATE_SEQUENCE,
 					-1,
 				),
-				config.CREATE_INDEX,
-				config.SECURE_CREATE_INDEX,
+				CREATE_INDEX,
+				SECURE_CREATE_INDEX,
 				-1,
 			),
-			DownScript: strings.Join(downScript, "\n"),
+			DownScript: downScript.String(),
 		},
 		Reference: Migration{
-			UpScript:   strings.Join(upReferenceScript, "\n"),
-			DownScript: strings.Join(downReferenceScript, "\n"),
+			UpScript:   upReferenceScript.String(),
+			DownScript: downReferenceScript.String(),
 		},
 		ForeignKey: Migration{
-			UpScript:   strings.Join(upForeignScript, "\n"),
-			DownScript: strings.Join(downForeignScript, "\n"),
+			UpScript:   upForeignScript.String(),
+			DownScript: downForeignScript.String(),
 		},
 	}
 }
@@ -142,22 +147,21 @@ func (table) downScript(line string) bool {
 }
 
 func (t table) downReferenceScript(line string) bool {
-	return t.downForeignkey(line) || strings.Contains(line, "pk") || strings.Contains(line, "pkey")
+	regex := regexp.MustCompile(`fkey|fk|foreign|foreign_key|foreignkey|foreignk|pkey|pk`)
+
+	return regex.MatchString(line)
 }
 
 func (table) downForeignkey(line string) bool {
-	return strings.Contains(line, "fkey") ||
-		strings.Contains(line, "fk") ||
-		strings.Contains(line, "foreign") ||
-		strings.Contains(line, "foreign_key") ||
-		strings.Contains(line, "foreignkey") ||
-		strings.Contains(line, "foreignk")
+	regex := regexp.MustCompile(`fkey|fk|foreign|foreign_key|foreignkey|foreignk`)
+
+	return regex.MatchString(line)
 }
 
 func (table) foreignScript(line string) bool {
-	return strings.Contains(line, "FOREIGN KEY")
+	return strings.Contains(line, FOREIGN_KEY)
 }
 
 func (table) refereceScript(line string, n int, lines []string) bool {
-	return strings.Contains(line, "ALTER TABLE ONLY") && strings.Contains(lines[n+1], "ADD CONSTRAINT")
+	return strings.Contains(line, ALTER_TABLE) && strings.Contains(lines[n+1], ADD_CONSTRAINT)
 }

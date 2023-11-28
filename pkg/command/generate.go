@@ -58,7 +58,7 @@ func (g generate) Call(schema string) error {
 	progress.Suffix = fmt.Sprintf(" Processing enums on schema %s...", g.successColor.Sprint(schema))
 
 	udts := db.NewEnum(g.connection).GenerateDdl(schema)
-	for _, s := range udts {
+	for s := range udts {
 		go func(version int64, schema string, ddl db.Migration) {
 			err := os.WriteFile(fmt.Sprintf("%s/%s/%d_enum_%s.up.sql", g.config.Folder, schema, version, ddl.Name), []byte(ddl.UpScript), 0777)
 			if err != nil {
@@ -87,7 +87,7 @@ func (g generate) Call(schema string) error {
 	progress.Suffix = fmt.Sprintf(" Processing functions on schema %s...", g.successColor.Sprint(schema))
 
 	functions := db.NewFunction(g.connection).GenerateDdl(schema)
-	for _, s := range functions {
+	for s := range functions {
 		go func(version int64, schema string, ddl db.Migration) {
 			err := os.WriteFile(fmt.Sprintf("%s/%s/%d_function_%s.up.sql", g.config.Folder, schema, version, ddl.Name), []byte(ddl.UpScript), 0777)
 			if err != nil {
@@ -116,7 +116,7 @@ func (g generate) Call(schema string) error {
 	progress.Suffix = fmt.Sprintf(" Processing views on schema %s...", g.successColor.Sprint(schema))
 
 	views := db.NewView(g.connection).GenerateDdl(schema)
-	for _, s := range views {
+	for s := range views {
 		go func(version int64, schema string, ddl db.Migration) {
 			err := os.WriteFile(fmt.Sprintf("%s/%s/%d_view_%s.up.sql", g.config.Folder, schema, version, ddl.Name), []byte(ddl.UpScript), 0777)
 			if err != nil {
@@ -144,8 +144,8 @@ func (g generate) Call(schema string) error {
 	progress = spinner.New(spinner.CharSets[config.SPINER_INDEX], config.SPINER_DURATION)
 	progress.Suffix = fmt.Sprintf(" Processing materialized views on schema %s...", g.successColor.Sprint(schema))
 
-	mViews := db.NewView(g.connection).GenerateDdl(schema)
-	for _, s := range mViews {
+	mViews := db.NewMaterializedView(g.connection).GenerateDdl(schema)
+	for s := range mViews {
 		go func(version int64, schema string, ddl db.Migration) {
 			err := os.WriteFile(fmt.Sprintf("%s/%s/%d_materialized_view_%s.up.sql", g.config.Folder, schema, version, ddl.Name), []byte(ddl.UpScript), 0777)
 			if err != nil {
@@ -169,13 +169,14 @@ func (g generate) Call(schema string) error {
 		version++
 	}
 
-	schemaConfig["tables"] = db.NewSchema(g.connection).ListTables(schema, schemaConfig["excludes"]...)
+	schemaTool := db.NewSchema(g.connection)
+	cTable := schemaTool.ListTable(schema, schemaConfig["excludes"]...)
 
 	ddlTool := db.NewTable(g.config.PgDump, source)
 	cDdl := make(chan db.Ddl)
 
-	go func(version int64, schema string, cDdl chan<- db.Ddl) {
-		for _, tableName := range schemaConfig["tables"] {
+	go func(version int64, schema string, cDdl chan<- db.Ddl, cTable <-chan string) {
+		for tableName := range cTable {
 			progress.Stop()
 			progress = spinner.New(spinner.CharSets[config.SPINER_INDEX], config.SPINER_DURATION)
 			progress.Suffix = fmt.Sprintf(" Processing table %s on schema %s...", g.successColor.Sprint(tableName), g.successColor.Sprint(schema))
@@ -240,9 +241,9 @@ func (g generate) Call(schema string) error {
 		}
 
 		close(cDdl)
-	}(version, schema, cDdl)
+	}(version, schema, cDdl, cTable)
 
-	version = version + int64(len(schemaConfig["tables"])*2)
+	version = (version - 4) + int64(schemaTool.CountTable(schema, len(schemaConfig["excludes"]))*2)
 
 	for ddl := range cDdl {
 		if ddl.ForeignKey.UpScript == "" {

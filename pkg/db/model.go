@@ -13,6 +13,26 @@ type (
 )
 
 const (
+	ALTER_TABLE = "ALTER TABLE ONLY"
+
+	ADD_CONSTRAINT = "ADD CONSTRAINT"
+
+	FOREIGN_KEY = "FOREIGN KEY"
+
+	CREATE_TABLE = "CREATE TABLE"
+
+	CREATE_SEQUENCE = "CREATE SEQUENCE"
+
+	CREATE_INDEX = "CREATE INDEX"
+
+	SECURE_CREATE_TABLE = "CREATE TABLE IF NOT EXISTS"
+
+	SECURE_CREATE_SEQUENCE = "CREATE SEQUENCE IF NOT EXISTS"
+
+	SECURE_CREATE_INDEX = "CREATE INDEX IF NOT EXISTS"
+
+	SECURE_DROP_VIEW = "DROP VIEW IF EXISTS %s;"
+
 	SQL_CREATE_ENUM_OPEN = `
 DO $$ BEGIN
     CREATE TYPE %s AS ENUM (`
@@ -70,6 +90,13 @@ WHERE table_type='BASE TABLE'
     AND table_schema='%s'
 ORDER BY table_name;`
 
+	QUERY_COUNT_TABLE = `
+SELECT
+    COUNT(1) as total
+FROM information_schema.tables
+WHERE table_type='BASE TABLE'
+    AND table_schema='%s';`
+
 	QUERY_LIST_VIEW = `
 SELECT
     COALESCE(table_name, '') AS view_name,
@@ -83,7 +110,7 @@ SELECT
     matviewname AS view_name,
     definition AS definition
 FROM pg_matviews
-WHERE schema_name = '%s'
+WHERE schemaname = '%s'
 ORDER BY schemaname,
     view_name;`
 )

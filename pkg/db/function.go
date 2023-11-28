@@ -13,33 +13,37 @@ func NewFunction(db *sql.DB) function {
 	return function{db: db}
 }
 
-func (s function) GenerateDdl(schema string) []Migration {
+func (s function) GenerateDdl(schema string) <-chan Migration {
+	cMigration := make(chan Migration)
 	rows, err := s.db.Query(fmt.Sprintf(QUERY_LIST_FUNCTION, schema))
 	if err != nil {
 		fmt.Println(err.Error())
 
-		return []Migration{}
+		return cMigration
 	}
-	defer rows.Close()
 
-	migrations := []Migration{}
-	for rows.Next() {
-		var name string
-		var definition string
-		var params string
-		err = rows.Scan(&name, &definition, &params)
-		if err != nil {
-			fmt.Println(err.Error())
+	go func(result *sql.Rows, channel chan<- Migration) {
+		for result.Next() {
+			var name string
+			var definition string
+			var params string
+			err = result.Scan(&name, &definition, &params)
+			if err != nil {
+				fmt.Println(err.Error())
 
-			continue
+				continue
+			}
+
+			channel <- Migration{
+				Name:       name,
+				UpScript:   definition,
+				DownScript: fmt.Sprintf("DROP FUNCTION IF EXISTS %s(%s);", name, params),
+			}
 		}
 
-		migrations = append(migrations, Migration{
-			Name:       name,
-			UpScript:   definition,
-			DownScript: fmt.Sprintf("DROP FUNCTION IF EXISTS %s(%s);", name, params),
-		})
-	}
+		close(channel)
+		rows.Close()
+	}(rows, cMigration)
 
-	return migrations
+	return cMigration
 }
