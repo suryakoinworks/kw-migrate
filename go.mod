@@ -21,6 +21,7 @@ require (
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/sergi/go-diff v1.3.1 // indirect
 	github.com/skeema/knownhosts v1.2.1 // indirect
+	github.com/sourcegraph/conc v0.3.0
 	go.uber.org/atomic v1.11.0 // indirect
 	golang.org/x/tools v0.15.0 // indirect
 )

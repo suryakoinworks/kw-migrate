@@ -46,8 +46,8 @@ func (s schema) CountTable(name string, nExcludes int) int {
 	return i - nExcludes
 }
 
-func (s schema) ListTable(name string, excludes ...string) <-chan string {
-	cTable := make(chan string)
+func (s schema) ListTable(nWorker int, name string, excludes ...string) <-chan string {
+	cTable := make(chan string, nWorker)
 	rows, err := s.db.Query(fmt.Sprintf(QUERY_LIST_TABLE, name))
 	if err != nil {
 		fmt.Println(err.Error())
