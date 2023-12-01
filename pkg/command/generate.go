@@ -84,6 +84,8 @@ func do(cMigration <-chan migration, cDdl chan<- db.Ddl) {
 
 			return
 		}
+
+		m.wg.Done()
 	}
 }
 
