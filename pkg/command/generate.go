@@ -47,32 +47,41 @@ func NewGenerate(config config.Migration, connection *sql.DB) generate {
 
 func do(cMigration <-chan migration, cDdl chan<- db.Ddl) {
 	for m := range cMigration {
-		defer m.wg.Done()
 		script := m.tableTool.Generate(fmt.Sprintf("%s.%s", m.schema, m.table), m.schemaOnly)
 
 		cDdl <- script
 
 		err := os.WriteFile(fmt.Sprintf("%s/%s/%d_table_%s.up.sql", m.folder, m.schema, m.version, m.table), []byte(script.Definition.UpScript), 0777)
 		if err != nil {
+			m.wg.Done()
+
 			return
 		}
 
 		err = os.WriteFile(fmt.Sprintf("%s/%s/%d_table_%s.down.sql", m.folder, m.schema, m.version, m.table), []byte(script.Definition.DownScript), 0777)
 		if err != nil {
+			m.wg.Done()
+
 			return
 		}
 
 		if script.Reference.UpScript == "" {
+			m.wg.Done()
+
 			return
 		}
 
 		err = os.WriteFile(fmt.Sprintf("%s/%s/%d_primary_key_%s.up.sql", m.folder, m.schema, m.version+1, m.table), []byte(script.Reference.UpScript), 0777)
 		if err != nil {
+			m.wg.Done()
+
 			return
 		}
 
 		err = os.WriteFile(fmt.Sprintf("%s/%s/%d_primary_key_%s.down.sql", m.folder, m.schema, m.version+1, m.table), []byte(script.Reference.DownScript), 0777)
 		if err != nil {
+			m.wg.Done()
+
 			return
 		}
 	}
