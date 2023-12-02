@@ -223,12 +223,17 @@ func (g generate) Call(schema string) error {
 	progress.Suffix = fmt.Sprintf(" Processing functions on schema %s...", g.successColor.Sprint(schema))
 	progress.Start()
 
+	wg := iSync.WaitGroup{}
+
 	functions := db.NewFunction(g.connection).GenerateDdl(schema)
 	for s := range functions {
+		wg.Add(1)
 		go func(version int64, schema string, ddl db.Migration) {
 			err := os.WriteFile(fmt.Sprintf("%s/%s/%d_function_%s.up.sql", g.config.Folder, schema, version, ddl.Name), []byte(ddl.UpScript), 0777)
 			if err != nil {
 				progress.Stop()
+
+				wg.Done()
 
 				g.errorColor.Println(err.Error())
 
@@ -239,10 +244,14 @@ func (g generate) Call(schema string) error {
 			if err != nil {
 				progress.Stop()
 
+				wg.Done()
+
 				g.errorColor.Println(err.Error())
 
 				return
 			}
+
+			wg.Done()
 		}(version, schema, s)
 
 		version++
@@ -252,12 +261,17 @@ func (g generate) Call(schema string) error {
 	progress.Suffix = fmt.Sprintf(" Processing views on schema %s...", g.successColor.Sprint(schema))
 	progress.Start()
 
+	wg = iSync.WaitGroup{}
+
 	views := db.NewView(g.connection).GenerateDdl(schema)
 	for s := range views {
+		wg.Add(1)
 		go func(version int64, schema string, ddl db.Migration) {
 			err := os.WriteFile(fmt.Sprintf("%s/%s/%d_view_%s.up.sql", g.config.Folder, schema, version, ddl.Name), []byte(ddl.UpScript), 0777)
 			if err != nil {
 				progress.Stop()
+
+				wg.Done()
 
 				g.errorColor.Println(err.Error())
 
@@ -268,10 +282,14 @@ func (g generate) Call(schema string) error {
 			if err != nil {
 				progress.Stop()
 
+				wg.Done()
+
 				g.errorColor.Println(err.Error())
 
 				return
 			}
+
+			wg.Done()
 		}(version, schema, s)
 
 		version++
@@ -281,7 +299,7 @@ func (g generate) Call(schema string) error {
 	progress.Suffix = fmt.Sprintf(" Processing materialized views on schema %s...", g.successColor.Sprint(schema))
 	progress.Start()
 
-	wg := iSync.WaitGroup{}
+	wg = iSync.WaitGroup{}
 
 	mViews := db.NewMaterializedView(g.connection).GenerateDdl(schema)
 	for s := range mViews {

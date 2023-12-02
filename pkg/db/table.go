@@ -80,8 +80,10 @@ func (t Table) Generate(name string, schemaOnly bool) Ddl {
 			if t.downReferenceScript(line) {
 				if t.downForeignkey(line) {
 					downForeignScript.WriteString(line)
+					upScript.WriteString("\n")
 				} else {
 					downReferenceScript.WriteString(line)
+					upScript.WriteString("\n")
 				}
 			} else {
 				downScript.WriteString(line)
@@ -92,6 +94,7 @@ func (t Table) Generate(name string, schemaOnly bool) Ddl {
 				if t.foreignScript(lines[n+1]) {
 					upForeignScript.WriteString(line)
 					upForeignScript.WriteString(lines[n+1])
+					upScript.WriteString("\n")
 				} else {
 					upReferenceScript.WriteString(line)
 					upReferenceScript.WriteString("\n")
