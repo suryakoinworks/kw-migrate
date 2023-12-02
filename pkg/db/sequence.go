@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 )
 
 type sequence struct {
@@ -33,7 +34,7 @@ func (s sequence) GenerateDdl(schema string) <-chan Migration {
 			}
 
 			channel <- Migration{
-				Name:       name,
+				Name:       strings.Replace(name, ".", "_", -1),
 				UpScript:   fmt.Sprintf(SQL_CREATE_SEQUENCE, name),
 				DownScript: fmt.Sprintf(SECURE_DROP_SEQUENCE, name),
 			}
