@@ -118,6 +118,7 @@ migration:
 - [x] Migrate functions
 - [x] Migrate views
 - [x] Migrate materialized views
+- [ ] Migrate trigger
 - [x] Show migration version
 - [x] Show State/Compare
 - [x] Upgrade Command

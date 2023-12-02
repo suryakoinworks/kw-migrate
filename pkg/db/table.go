@@ -42,6 +42,8 @@ func (t Table) Generate(name string, schemaOnly bool) Ddl {
 		"--no-privileges",
 		"--no-blobs",
 		"--clean",
+		"--if-exists",
+		"--compress", "none",
 		"--username", t.config.User,
 		"--port", strconv.Itoa(t.config.Port),
 		"--host", t.config.Host,
@@ -92,6 +94,7 @@ func (t Table) Generate(name string, schemaOnly bool) Ddl {
 				if t.foreignScript(lines[n+1]) {
 					upForeignScript.WriteString(line)
 					upForeignScript.WriteString(lines[n+1])
+					upForeignScript.WriteString("\n")
 				} else {
 					upReferenceScript.WriteString(line)
 					upReferenceScript.WriteString("\n")

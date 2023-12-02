@@ -111,8 +111,8 @@ func (g generate) Call(schema string) error {
 	os.MkdirAll(fmt.Sprintf("%s/%s", g.config.Folder, schema), 0777)
 
 	version := time.Now().Unix()
-	nWorker := runtime.NumCPU()
-	worker := pool.New().WithMaxGoroutines(nWorker)
+	nWorker := 5
+	worker := pool.New().WithMaxGoroutines(runtime.NumCPU())
 
 	progress.Stop()
 	progress.Suffix = fmt.Sprintf(" Processing enums on schema %s...", g.successColor.Sprint(schema))

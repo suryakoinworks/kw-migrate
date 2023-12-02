@@ -35,7 +35,27 @@ const (
 
 	SECURE_DROP_TYPE = "DROP TYPE IF EXISTS %s;"
 
+	SECURE_DROP_SEQUENCE = "DROP SEQUENCE IF EXISTS %s;"
+
+	SECURE_DROP_INDEX = "DROP INDEX IF EXISTS %s.%s;"
+
 	SECURE_DROP_FUNCTION = "DROP FUNCTION IF EXISTS %s(%s);"
+
+	SECURE_DROP_PRIMARY_KEY = "ALTER TABLE IF EXISTS ONLY %s.%s DROP CONSTRAINT IF EXISTS %s;"
+
+	SECURE_DROP_FOREIGN_KEY = "ALTER TABLE IF EXISTS ONLY %s.%s DROP CONSTRAINT IF EXISTS %s;"
+
+	SQL_CREATE_PRIMARY_KEY = "ALTER TABLE ONLY %s.%s ADD CONSTRAINT %s %s;"
+
+	SQL_CREATE_FOREIGN_KEY = "ALTER TABLE ONLY %s.%s ADD CONSTRAINT %s %s;"
+
+	SQL_CREATE_SEQUENCE = `
+CREATE SEQUENCE IF NOT EXISTS %s
+START WITH 1
+INCREMENT BY 1
+NO MINVALUE
+NO MAXVALUE
+CACHE 1;`
 
 	SQL_CREATE_ENUM_OPEN = `
 DO $$ BEGIN
@@ -46,6 +66,57 @@ EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
     `
+
+	QUERY_LIST_PRIMARY_KEY_IN_TABLE = `
+SELECT
+    conname AS primary_key,
+    pg_get_constraintdef(oid) AS definition
+FROM   pg_constraint
+WHERE contype = 'p'
+    AND connamespace = '%s'::regnamespace
+    AND conrelid::regclass::text = '%s.%s'
+ORDER BY conrelid::regclass::text,
+    contype DESC;`
+
+	QUERY_LIST_FOREIGN_KEY_IN_TABLE = `
+SELECT
+    conname AS foreign_key,
+    pg_get_constraintdef(oid) AS definition
+FROM   pg_constraint
+WHERE contype = 'f'
+    AND connamespace = '%s'::regnamespace
+    AND conrelid::regclass::text = '%s.%s'
+ORDER BY conrelid::regclass::text,
+    contype DESC;`
+
+	QUERY_LIST_COLUMN_IN_TABLE = `
+SELECT
+    column_name,
+    data_type,
+    character_maximum_length AS max_length,
+    is_nullable,
+    column_default
+FROM
+    information_schema.columns
+WHERE table_schema = '%s' AND
+    table_name = '%s';`
+
+	QUERY_LIST_INDEX_IN_TABLE = `
+SELECT
+    indexname,
+    indexdef
+FROM
+    pg_indexes
+WHERE schemaname = '%s'
+    AND tablename = '%s'
+ORDER BY tablename,
+    indexname;`
+
+	QUERY_LIST_SEQUENCE = `
+SELECT
+	CONCAT(sequence_schema, '.', sequence_name) AS seq_name
+FROM information_schema.sequences
+WHERE sequence_schema = '%s';`
 
 	QUERY_LIST_FUNCTION = `
 SELECT
