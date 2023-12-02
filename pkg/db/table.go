@@ -28,7 +28,7 @@ func NewTable(command string, config config.Connection) Table {
 	return Table{command: command, config: config}
 }
 
-func (t Table) Generate(name string, schemaOnly bool) Ddl {
+func (t Table) Generate(tables []string, schemaOnly bool) map[string]Ddl {
 	options := []string{
 		"--no-comments",
 		"--no-publications",
@@ -45,8 +45,13 @@ func (t Table) Generate(name string, schemaOnly bool) Ddl {
 		"--username", t.config.User,
 		"--port", strconv.Itoa(t.config.Port),
 		"--host", t.config.Host,
-		"--table", name,
 		t.config.Name,
+	}
+
+	mapDdl := map[string]Ddl{}
+	for _, t := range tables {
+		options = append(options, "--table", t)
+		mapDdl[t] = Ddl{}
 	}
 
 	if schemaOnly {
@@ -59,83 +64,117 @@ func (t Table) Generate(name string, schemaOnly bool) Ddl {
 	cli.Env = os.Environ()
 	cli.Env = append(cli.Env, fmt.Sprintf("PGPASSWORD=%s", t.config.Password))
 
-	var upScript strings.Builder
-	var downScript strings.Builder
-	var upReferenceScript strings.Builder
-	var downReferenceScript strings.Builder
-	var upForeignScript strings.Builder
-	var downForeignScript strings.Builder
 	var skip bool = false
 
 	result, _ := cli.CombinedOutput()
+
+	fmt.Println(string(result))
+
+	tableIndex := map[string]int{}
 	lines := strings.Split(string(result), "\n")
 	for n, line := range lines {
 		if t.skip(line) || skip {
-			skip = false
-
 			continue
 		}
 
-		if t.downScript(line) {
-			if t.downReferenceScript(line) {
-				if t.downForeignkey(line) {
-					downForeignScript.WriteString(line)
-				} else {
-					downReferenceScript.WriteString(line)
-				}
-			} else {
-				downScript.WriteString(line)
-				downScript.WriteString("\n")
-			}
-		} else {
-			if t.refereceScript(line, n, lines) {
-				if t.foreignScript(lines[n+1]) {
-					upForeignScript.WriteString(line)
-					upForeignScript.WriteString(lines[n+1])
-				} else {
-					upReferenceScript.WriteString(line)
-					upReferenceScript.WriteString("\n")
-					upReferenceScript.WriteString(lines[n+1])
-					upReferenceScript.WriteString("\n")
-				}
-				skip = true
-			} else {
-				upScript.WriteString(line)
-				upScript.WriteString("\n")
+		for k := range mapDdl {
+			var table strings.Builder
+
+			table.WriteString(CREATE_TABLE)
+			table.WriteString(" ")
+			table.WriteString(k)
+			table.WriteString(" (")
+
+			if strings.Contains(line, k) {
+				tableIndex[k] = n
+
+				break
 			}
 		}
 	}
 
-	return Ddl{
-		Name: strings.Replace(name, ".", "_", -1),
-		Definition: Migration{
-			UpScript: strings.Replace(
-				strings.Replace(
+	for x, i := range tableIndex {
+		var upScript strings.Builder
+		var downScript strings.Builder
+		var upReferenceScript strings.Builder
+		var downReferenceScript strings.Builder
+		var upForeignScript strings.Builder
+		var downForeignScript strings.Builder
+
+		for n, line := range lines {
+			if n == i {
+				break
+			}
+
+			if t.skip(line) || skip {
+				skip = false
+
+				continue
+			}
+
+			if t.downScript(line) {
+				if t.downReferenceScript(line) {
+					if t.downForeignkey(line) {
+						downForeignScript.WriteString(line)
+					} else {
+						downReferenceScript.WriteString(line)
+					}
+				} else {
+					downScript.WriteString(line)
+					downScript.WriteString("\n")
+				}
+			} else {
+				if t.refereceScript(line, n, lines) {
+					if t.foreignScript(lines[n+1]) {
+						upForeignScript.WriteString(line)
+						upForeignScript.WriteString(lines[n+1])
+					} else {
+						upReferenceScript.WriteString(line)
+						upReferenceScript.WriteString("\n")
+						upReferenceScript.WriteString(lines[n+1])
+						upReferenceScript.WriteString("\n")
+					}
+					skip = true
+				} else {
+					upScript.WriteString(line)
+					upScript.WriteString("\n")
+				}
+			}
+		}
+
+		mapDdl[x] = Ddl{
+			Name: strings.Replace(x, ".", "_", -1),
+			Definition: Migration{
+				UpScript: strings.Replace(
 					strings.Replace(
-						upScript.String(),
-						CREATE_TABLE,
-						SECURE_CREATE_TABLE,
+						strings.Replace(
+							upScript.String(),
+							CREATE_TABLE,
+							SECURE_CREATE_TABLE,
+							-1,
+						),
+						CREATE_SEQUENCE,
+						SECURE_CREATE_SEQUENCE,
 						-1,
 					),
-					CREATE_SEQUENCE,
-					SECURE_CREATE_SEQUENCE,
+					CREATE_INDEX,
+					SECURE_CREATE_INDEX,
 					-1,
 				),
-				CREATE_INDEX,
-				SECURE_CREATE_INDEX,
-				-1,
-			),
-			DownScript: downScript.String(),
-		},
-		Reference: Migration{
-			UpScript:   upReferenceScript.String(),
-			DownScript: downReferenceScript.String(),
-		},
-		ForeignKey: Migration{
-			UpScript:   upForeignScript.String(),
-			DownScript: downForeignScript.String(),
-		},
+				DownScript: downScript.String(),
+			},
+			Reference: Migration{
+				UpScript:   upReferenceScript.String(),
+				DownScript: downReferenceScript.String(),
+			},
+			ForeignKey: Migration{
+				UpScript:   upForeignScript.String(),
+				DownScript: downForeignScript.String(),
+			},
+		}
 	}
+
+	return mapDdl
 }
 
 func (Table) skip(line string) bool {

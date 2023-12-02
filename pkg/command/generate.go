@@ -6,6 +6,8 @@ import (
 	"kmt/pkg/config"
 	"kmt/pkg/db"
 	"os"
+	"slices"
+	"strings"
 	iSync "sync"
 	"time"
 
@@ -23,13 +25,13 @@ type (
 	}
 
 	migration struct {
-		wg         *iSync.WaitGroup
-		tableTool  db.Table
-		folder     string
-		version    int64
-		schema     string
-		schemaOnly bool
-		table      string
+		wg           *iSync.WaitGroup
+		tableTool    db.Table
+		folder       string
+		version      int64
+		schema       string
+		schemaConfig map[string][]string
+		tables       []string
 	}
 )
 
@@ -45,42 +47,83 @@ func NewGenerate(config config.Migration, connection *sql.DB) generate {
 
 func do(cMigration <-chan migration, cDdl chan<- db.Ddl) {
 	for m := range cMigration {
-		script := m.tableTool.Generate(fmt.Sprintf("%s.%s", m.schema, m.table), m.schemaOnly)
+		tableSchemaOnly := []string{}
+		tableWithData := []string{}
+		for _, t := range m.tables {
+			for _, d := range m.schemaConfig["with_data"] {
+				var fqtn strings.Builder
 
-		cDdl <- script
+				fqtn.WriteString(m.schema)
+				fqtn.WriteString(".")
+				fqtn.WriteString(t)
 
-		err := os.WriteFile(fmt.Sprintf("%s/%s/%d_table_%s.up.sql", m.folder, m.schema, m.version, m.table), []byte(script.Definition.UpScript), 0777)
-		if err != nil {
-			m.wg.Done()
+				if slices.Contains(m.tables, d) {
+					tableWithData = append(tableWithData, fqtn.String())
 
-			return
+					continue
+				}
+
+				tableSchemaOnly = append(tableSchemaOnly, fqtn.String())
+			}
 		}
 
-		err = os.WriteFile(fmt.Sprintf("%s/%s/%d_table_%s.down.sql", m.folder, m.schema, m.version, m.table), []byte(script.Definition.DownScript), 0777)
-		if err != nil {
-			m.wg.Done()
+		scriptSchemaOnly := m.tableTool.Generate(tableSchemaOnly, true)
+		scriptWithData := m.tableTool.Generate(tableWithData, false)
 
-			return
+		for _, ddl := range scriptSchemaOnly {
+			cDdl <- ddl
+
+			err := os.WriteFile(fmt.Sprintf("%s/%s/%d_table_%s.up.sql", m.folder, m.schema, m.version, ddl.Name), []byte(ddl.Definition.UpScript), 0777)
+			if err != nil {
+				continue
+			}
+
+			err = os.WriteFile(fmt.Sprintf("%s/%s/%d_table_%s.down.sql", m.folder, m.schema, m.version, ddl.Name), []byte(ddl.Definition.DownScript), 0777)
+			if err != nil {
+				continue
+			}
+
+			if ddl.Reference.UpScript == "" {
+				continue
+			}
+
+			err = os.WriteFile(fmt.Sprintf("%s/%s/%d_primary_key_%s.up.sql", m.folder, m.schema, m.version+1, ddl.Name), []byte(ddl.Reference.UpScript), 0777)
+			if err != nil {
+				continue
+			}
+
+			err = os.WriteFile(fmt.Sprintf("%s/%s/%d_primary_key_%s.down.sql", m.folder, m.schema, m.version+1, ddl.Name), []byte(ddl.Reference.DownScript), 0777)
+			if err != nil {
+				continue
+			}
 		}
 
-		if script.Reference.UpScript == "" {
-			m.wg.Done()
+		for _, ddl := range scriptWithData {
+			cDdl <- ddl
 
-			return
-		}
+			err := os.WriteFile(fmt.Sprintf("%s/%s/%d_table_%s.up.sql", m.folder, m.schema, m.version, ddl.Name), []byte(ddl.Definition.UpScript), 0777)
+			if err != nil {
+				continue
+			}
 
-		err = os.WriteFile(fmt.Sprintf("%s/%s/%d_primary_key_%s.up.sql", m.folder, m.schema, m.version+1, m.table), []byte(script.Reference.UpScript), 0777)
-		if err != nil {
-			m.wg.Done()
+			err = os.WriteFile(fmt.Sprintf("%s/%s/%d_table_%s.down.sql", m.folder, m.schema, m.version, ddl.Name), []byte(ddl.Definition.DownScript), 0777)
+			if err != nil {
+				continue
+			}
 
-			return
-		}
+			if ddl.Reference.UpScript == "" {
+				continue
+			}
 
-		err = os.WriteFile(fmt.Sprintf("%s/%s/%d_primary_key_%s.down.sql", m.folder, m.schema, m.version+1, m.table), []byte(script.Reference.DownScript), 0777)
-		if err != nil {
-			m.wg.Done()
+			err = os.WriteFile(fmt.Sprintf("%s/%s/%d_primary_key_%s.up.sql", m.folder, m.schema, m.version+1, ddl.Name), []byte(ddl.Reference.UpScript), 0777)
+			if err != nil {
+				continue
+			}
 
-			return
+			err = os.WriteFile(fmt.Sprintf("%s/%s/%d_primary_key_%s.down.sql", m.folder, m.schema, m.version+1, ddl.Name), []byte(ddl.Reference.DownScript), 0777)
+			if err != nil {
+				continue
+			}
 		}
 
 		m.wg.Done()
@@ -147,7 +190,7 @@ func (g generate) Call(schema string) error {
 	cDdl := make(chan db.Ddl)
 	tTable := schemaTool.CountTable(schema, len(schemaConfig["excludes"]))
 
-	go func(version int64, schema string, tTable int, cDdl chan<- db.Ddl, cTable <-chan string) {
+	go func(version int64, schema string, tTable int, cDdl chan<- db.Ddl, cTable <-chan []string) {
 		cMigration := make(chan migration)
 		wg := iSync.WaitGroup{}
 
@@ -156,31 +199,22 @@ func (g generate) Call(schema string) error {
 		}
 
 		count := 1
-		for tableName := range cTable {
+		for tables := range cTable {
 			progress.Stop()
 			progress = spinner.New(spinner.CharSets[config.SPINER_INDEX], config.SPINER_DURATION)
-			progress.Suffix = fmt.Sprintf(" Processing table %s (%d/%d) on schema %s...", g.successColor.Sprint(tableName), count, tTable, g.successColor.Sprint(schema))
+			progress.Suffix = fmt.Sprintf(" Processing table (%s/%s) on schema %s...", g.successColor.Sprint(count), g.successColor.Sprint(tTable), g.successColor.Sprint(schema))
 			progress.Start()
-
-			schemaOnly := true
-			for _, d := range schemaConfig["with_data"] {
-				if d == tableName {
-					schemaOnly = false
-
-					break
-				}
-			}
 
 			wg.Add(1)
 
 			cMigration <- migration{
-				wg:         &wg,
-				tableTool:  ddlTool,
-				folder:     g.config.Folder,
-				version:    version,
-				schema:     schema,
-				schemaOnly: schemaOnly,
-				table:      tableName,
+				wg:           &wg,
+				tableTool:    ddlTool,
+				folder:       g.config.Folder,
+				version:      version,
+				schema:       schema,
+				schemaConfig: schemaConfig,
+				tables:       tables,
 			}
 
 			version += 2

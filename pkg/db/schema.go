@@ -46,8 +46,8 @@ func (s schema) CountTable(name string, nExcludes int) int {
 	return i - nExcludes
 }
 
-func (s schema) ListTable(nWorker int, name string, excludes ...string) <-chan string {
-	cTable := make(chan string, nWorker)
+func (s schema) ListTable(nWorker int, name string, excludes ...string) <-chan []string {
+	cTable := make(chan []string, nWorker)
 	rows, err := s.db.Query(fmt.Sprintf(QUERY_LIST_TABLE, name))
 	if err != nil {
 		fmt.Println(err.Error())
@@ -55,7 +55,9 @@ func (s schema) ListTable(nWorker int, name string, excludes ...string) <-chan s
 		return cTable
 	}
 
-	go func(result *sql.Rows, channel chan<- string) {
+	go func(result *sql.Rows, channel chan<- []string) {
+		tables := [][]string{}
+		n := 0
 		for result.Next() {
 			var table string
 			err = result.Scan(&table)
@@ -75,13 +77,26 @@ func (s schema) ListTable(nWorker int, name string, excludes ...string) <-chan s
 			}
 
 			if !skip {
-				channel <- table
+				i := (n % 10)
+				if n < 10 {
+					tables = append(tables, []string{})
+				}
+
+				tables[i] = append(tables[i], table)
+
 				skip = false
 			}
+
+			n++
+		}
+
+		rows.Close()
+
+		for _, t := range tables {
+			channel <- t
 		}
 
 		close(channel)
-		rows.Close()
 	}(rows, cTable)
 
 	return cTable
