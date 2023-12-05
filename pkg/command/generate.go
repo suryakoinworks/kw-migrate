@@ -144,11 +144,12 @@ func (g generate) Call(schema string) error {
 	cTable := schemaTool.ListTable(nWorker, schema, schemaConfig["excludes"]...)
 
 	ddlTool := db.NewTable(g.config.PgDump, source)
-	cDdl := make(chan db.Ddl)
+	cDdl := make(chan db.Ddl, nWorker)
+	cInsert := make(chan db.Ddl, nWorker)
 	tTable := schemaTool.CountTable(schema, len(schemaConfig["excludes"]))
 
 	go func(version int64, schema string, tTable int, cDdl chan<- db.Ddl, cTable <-chan string) {
-		cMigration := make(chan migration)
+		cMigration := make(chan migration, nWorker)
 		wg := iSync.WaitGroup{}
 
 		for i := 1; i <= nWorker; i++ {
@@ -192,13 +193,46 @@ func (g generate) Call(schema string) error {
 	}(version, schema, tTable, cDdl, cTable)
 
 	version = version + int64(tTable*2)
+	go func(version int64, schema string, cDdl <-chan db.Ddl, cInsert chan<- db.Ddl) {
+		for ddl := range cDdl {
+			cInsert <- ddl
 
-	for ddl := range cDdl {
-		if ddl.ForeignKey.UpScript == "" {
+			if ddl.ForeignKey.UpScript == "" {
+				continue
+			}
+
+			err := os.WriteFile(fmt.Sprintf("%s/%s/%d_foreign_key_%s.up.sql", g.config.Folder, schema, version, ddl.Name), []byte(ddl.ForeignKey.UpScript), 0777)
+			if err != nil {
+				progress.Stop()
+
+				g.errorColor.Println(err.Error())
+
+				continue
+			}
+
+			err = os.WriteFile(fmt.Sprintf("%s/%s/%d_foreign_key_%s.down.sql", g.config.Folder, schema, version, ddl.Name), []byte(ddl.ForeignKey.DownScript), 0777)
+			if err != nil {
+				progress.Stop()
+
+				g.errorColor.Println(err.Error())
+
+				continue
+			}
+
+			version++
+		}
+
+		close(cInsert)
+	}(version, schema, cDdl, cInsert)
+
+	version = version + int64(tTable*2)
+
+	for ddl := range cInsert {
+		if ddl.Insert.UpScript == "" {
 			continue
 		}
 
-		err := os.WriteFile(fmt.Sprintf("%s/%s/%d_foreign_keys_%s.up.sql", g.config.Folder, schema, version, ddl.Name), []byte(ddl.ForeignKey.UpScript), 0777)
+		err := os.WriteFile(fmt.Sprintf("%s/%s/%d_insert_%s.up.sql", g.config.Folder, schema, version, ddl.Name), []byte(ddl.Insert.UpScript), 0777)
 		if err != nil {
 			progress.Stop()
 
@@ -207,7 +241,7 @@ func (g generate) Call(schema string) error {
 			continue
 		}
 
-		err = os.WriteFile(fmt.Sprintf("%s/%s/%d_foreign_keys_%s.down.sql", g.config.Folder, schema, version, ddl.Name), []byte(ddl.ForeignKey.DownScript), 0777)
+		err = os.WriteFile(fmt.Sprintf("%s/%s/%d_insert_%s.down.sql", g.config.Folder, schema, version, ddl.Name), []byte(ddl.Insert.DownScript), 0777)
 		if err != nil {
 			progress.Stop()
 

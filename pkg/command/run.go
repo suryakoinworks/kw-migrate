@@ -68,11 +68,17 @@ func (r run) Call(source string, schema string, step int) error {
 
 	migrations := []string{}
 	number := 0
-	for _, file := range files {
+	for i, file := range files {
+		if i%2 == 0 {
+			continue
+		}
+
 		f := strings.Split(file.Name(), "_")
 		s, _ := strconv.Atoi(f[0])
 		if !valid && version == uint(s) {
 			valid = true
+
+			continue
 		}
 
 		if valid && number < step {
@@ -90,7 +96,7 @@ func (r run) Call(source string, schema string, step int) error {
 
 	for _, v := range migrations {
 		progress := spinner.New(spinner.CharSets[config.SPINER_INDEX], config.SPINER_DURATION)
-		progress.Suffix = fmt.Sprintf(" Run migration file %s on schema %s", r.boldFont.Sprint(v), r.boldFont.Sprint(schema))
+		progress.Suffix = fmt.Sprintf(" Run migration file %s on schema %s", r.successColor.Sprint(v), r.successColor.Sprint(schema))
 
 		err = migrator.Steps(1)
 		if err != nil {

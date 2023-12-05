@@ -32,10 +32,10 @@ func (t test) Call() error {
 
 	for i, c := range t.config.Connections {
 		progress.Stop()
-		progress.Suffix = fmt.Sprintf(" Test connection to %s...", t.boldFont.Sprint(i))
+		progress.Suffix = fmt.Sprintf(" Test connection to %s...", t.successColor.Sprint(i))
 		progress.Start()
 
-		_, err := config.NewConnection(c)
+		db, err := config.NewConnection(c)
 		if err != nil {
 			progress.Stop()
 
@@ -43,15 +43,24 @@ func (t test) Call() error {
 
 			return nil
 		}
+
+		_, err = db.Query("SELECT 1")
+		if err != nil {
+			progress.Stop()
+
+			t.errorColor.Printf("Connection '%s' error %s \n", i, err.Error())
+
+			return nil
+		}
 	}
 
 	progress.Stop()
 
-	progress.Suffix = fmt.Sprintf(" Test '%s' command...", t.boldFont.Sprint("pg_dump"))
+	progress.Suffix = fmt.Sprintf(" Test '%s' command...", t.successColor.Sprint("pg_dump"))
 	progress.Start()
 
 	cli := exec.Command(t.config.PgDump, "--help")
-	_, err := cli.CombinedOutput()
+	err := cli.Start()
 	if err != nil {
 		progress.Stop()
 

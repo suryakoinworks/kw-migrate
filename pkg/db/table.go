@@ -19,6 +19,7 @@ type (
 	Ddl struct {
 		Name       string
 		Definition Migration
+		Insert     Migration
 		Reference  Migration
 		ForeignKey Migration
 	}
@@ -65,7 +66,9 @@ func (t Table) Generate(name string, schemaOnly bool) Ddl {
 	var downReferenceScript strings.Builder
 	var upForeignScript strings.Builder
 	var downForeignScript strings.Builder
+	var insertScript strings.Builder
 	var skip bool = false
+	var waitForSemicolon bool = false
 
 	result, _ := cli.CombinedOutput()
 	lines := strings.Split(string(result), "\n")
@@ -80,33 +83,72 @@ func (t Table) Generate(name string, schemaOnly bool) Ddl {
 			if t.downReferenceScript(line) {
 				if t.downForeignkey(line) {
 					downForeignScript.WriteString(line)
-					upScript.WriteString("\n")
-				} else {
-					downReferenceScript.WriteString(line)
-					upScript.WriteString("\n")
+					downForeignScript.WriteString("\n")
+
+					continue
 				}
-			} else {
-				downScript.WriteString(line)
-				downScript.WriteString("\n")
+
+				downReferenceScript.WriteString(line)
+				downReferenceScript.WriteString("\n")
+
+				continue
 			}
-		} else {
-			if t.refereceScript(line, n, lines) {
-				if t.foreignScript(lines[n+1]) {
-					upForeignScript.WriteString(line)
-					upForeignScript.WriteString(lines[n+1])
-					upScript.WriteString("\n")
-				} else {
-					upReferenceScript.WriteString(line)
-					upReferenceScript.WriteString("\n")
-					upReferenceScript.WriteString(lines[n+1])
-					upReferenceScript.WriteString("\n")
-				}
-				skip = true
-			} else {
-				upScript.WriteString(line)
-				upScript.WriteString("\n")
+
+			downScript.WriteString(line)
+			downScript.WriteString("\n")
+
+			continue
+		}
+
+		if t.refereceScript(line, n, lines) {
+			if t.foreignScript(lines[n+1]) {
+				upForeignScript.WriteString(line)
+				upForeignScript.WriteString("\n")
+				upForeignScript.WriteString(lines[n+1])
+				upForeignScript.WriteString("\n")
+
+				continue
+			}
+
+			upReferenceScript.WriteString(line)
+			upReferenceScript.WriteString("\n")
+			upReferenceScript.WriteString(lines[n+1])
+			upReferenceScript.WriteString("\n")
+
+			skip = true
+
+			continue
+		}
+
+		if waitForSemicolon {
+			insertScript.WriteString(line)
+
+			if !t.waitForSemicolon(line) {
+				waitForSemicolon = false
+			}
+
+			if !waitForSemicolon {
+				insertScript.WriteString("\n")
 			}
 		}
+
+		if t.insertScript(line) {
+			if t.waitForSemicolon(line) {
+				waitForSemicolon = true
+			}
+
+			insertScript.WriteString(line)
+
+			if !waitForSemicolon {
+				insertScript.WriteString("\n")
+			}
+
+			continue
+		}
+
+		upScript.WriteString(line)
+		upScript.WriteString("\n")
+
 	}
 
 	return Ddl{
@@ -129,6 +171,10 @@ func (t Table) Generate(name string, schemaOnly bool) Ddl {
 				-1,
 			),
 			DownScript: downScript.String(),
+		},
+		Insert: Migration{
+			UpScript:   insertScript.String(),
+			DownScript: "",
 		},
 		Reference: Migration{
 			UpScript:   upReferenceScript.String(),
@@ -167,4 +213,12 @@ func (Table) foreignScript(line string) bool {
 
 func (Table) refereceScript(line string, n int, lines []string) bool {
 	return strings.Contains(line, ALTER_TABLE) && strings.Contains(lines[n+1], ADD_CONSTRAINT)
+}
+
+func (Table) insertScript(line string) bool {
+	return strings.Contains(line, INSERT_INTO)
+}
+
+func (Table) waitForSemicolon(line string) bool {
+	return !strings.HasSuffix(line, ");")
 }

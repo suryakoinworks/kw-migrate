@@ -3,12 +3,13 @@ package main
 import (
 	"errors"
 	"fmt"
-	"kmt/pkg/command"
-	"kmt/pkg/config"
 	"log"
 	"os"
 	"strconv"
 	"strings"
+
+	"kmt/pkg/command"
+	"kmt/pkg/config"
 
 	"github.com/fatih/color"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -40,7 +41,6 @@ func main() {
 			},
 			{
 				Name:        "up",
-				Aliases:     []string{"up"},
 				Description: "up <db> <schema>",
 				Usage:       "Migration up",
 				Action: func(ctx *cli.Context) error {
