@@ -226,7 +226,6 @@ func (g generate) Call(schema string) error {
 	}(version, schema, cDdl, cInsert)
 
 	version = version + int64(tTable*2)
-
 	for ddl := range cInsert {
 		if ddl.Insert.UpScript == "" {
 			continue
@@ -295,8 +294,6 @@ func (g generate) Call(schema string) error {
 	progress.Suffix = fmt.Sprintf(" Processing views on schema %s...", g.successColor.Sprint(schema))
 	progress.Start()
 
-	wg = iSync.WaitGroup{}
-
 	views := db.NewView(g.connection).GenerateDdl(schema)
 	for s := range views {
 		wg.Add(1)
@@ -332,8 +329,6 @@ func (g generate) Call(schema string) error {
 	progress.Stop()
 	progress.Suffix = fmt.Sprintf(" Processing materialized views on schema %s...", g.successColor.Sprint(schema))
 	progress.Start()
-
-	wg = iSync.WaitGroup{}
 
 	mViews := db.NewMaterializedView(g.connection).GenerateDdl(schema)
 	for s := range mViews {
