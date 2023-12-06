@@ -40,7 +40,7 @@ Manage postgresql cluster migration easly
 
 - `kmt up <db> <schema>` to deploy migration(s) from database and schema
 
-- `kmt down <db> <schema>` to drop migration(s) from database and schema
+- `kmt drop <db> <schema>` to drop migration(s) from database and schema
 
 - `kmt generate <schema>` to reverse migration from your `source` database
 

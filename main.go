@@ -161,21 +161,6 @@ func main() {
 				},
 			},
 			{
-				Name:        "down",
-				Aliases:     []string{"dw"},
-				Description: "down <db> <schema>",
-				Usage:       "Migration down",
-				Action: func(ctx *cli.Context) error {
-					if ctx.NArg() != 2 {
-						return errors.New("not enough arguments. Usage: kmt down <db> <schema>")
-					}
-
-					config := config.Parse(config.CONFIG_FILE)
-
-					return command.NewDown(config.Migration).Call(ctx.Args().Get(0), ctx.Args().Get(1))
-				},
-			},
-			{
 				Name:        "drop",
 				Aliases:     []string{"dp"},
 				Description: "drop <db> <schema>",
@@ -187,7 +172,7 @@ func main() {
 
 					config := config.Parse(config.CONFIG_FILE)
 
-					return command.NewDrop(config.Migration).Call(ctx.Args().Get(0), ctx.Args().Get(1))
+					return command.NewDown(config.Migration).Call(ctx.Args().Get(0), ctx.Args().Get(1))
 				},
 			},
 			{
