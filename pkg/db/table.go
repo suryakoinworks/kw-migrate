@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
 	"kmt/pkg/config"
 	"os"
@@ -14,6 +15,7 @@ type (
 	Table struct {
 		command string
 		config  config.Connection
+		db      *sql.DB
 	}
 
 	Ddl struct {
@@ -25,8 +27,8 @@ type (
 	}
 )
 
-func NewTable(command string, config config.Connection) Table {
-	return Table{command: command, config: config}
+func NewTable(command string, config config.Connection, db *sql.DB) Table {
+	return Table{command: command, config: config, db: db}
 }
 
 func (t Table) Generate(name string, schemaOnly bool) Ddl {
@@ -67,8 +69,14 @@ func (t Table) Generate(name string, schemaOnly bool) Ddl {
 	var upForeignScript strings.Builder
 	var downForeignScript strings.Builder
 	var insertScript strings.Builder
+	var deleteScript strings.Builder
 	var skip bool = false
 	var waitForSemicolon bool = false
+
+	primaryKey := t.primaryKey(name)
+	if primaryKey == name {
+		primaryKey = ""
+	}
 
 	result, _ := cli.CombinedOutput()
 	lines := strings.Split(string(result), "\n")
@@ -139,6 +147,15 @@ func (t Table) Generate(name string, schemaOnly bool) Ddl {
 			}
 
 			insertScript.WriteString(line)
+			if primaryKey != "" {
+				deleteScript.WriteString("DELETE FROM ")
+				deleteScript.WriteString(name)
+				deleteScript.WriteString(" WHERE ")
+				deleteScript.WriteString(primaryKey)
+				deleteScript.WriteString(" = ")
+				deleteScript.WriteString(t.keyValue(line, name, !waitForSemicolon))
+				deleteScript.WriteString(";\n")
+			}
 
 			if !waitForSemicolon {
 				insertScript.WriteString("\n")
@@ -175,7 +192,7 @@ func (t Table) Generate(name string, schemaOnly bool) Ddl {
 		},
 		Insert: Migration{
 			UpScript:   insertScript.String(),
-			DownScript: "",
+			DownScript: deleteScript.String(),
 		},
 		Reference: Migration{
 			UpScript:   upReferenceScript.String(),
@@ -186,6 +203,38 @@ func (t Table) Generate(name string, schemaOnly bool) Ddl {
 			DownScript: downForeignScript.String(),
 		},
 	}
+}
+
+func (t Table) primaryKey(name string) string {
+	tables := strings.Split(name, ".")
+	rows, err := t.db.Query(fmt.Sprintf(QUERY_GET_PRIMARY_KEY, tables[0], tables[1]))
+	if err != nil {
+		fmt.Println(err.Error())
+
+		return ""
+	}
+
+	for rows.Next() {
+		err = rows.Scan(&name)
+		if err != nil {
+			fmt.Println(err.Error())
+
+			break
+		}
+	}
+
+	return name
+}
+
+func (Table) keyValue(line string, name string, between bool) string {
+	line = strings.TrimLeft(line, fmt.Sprintf(SQL_INSERT_INTO_START, name))
+	if between {
+		line = strings.TrimRight(line, SQL_INSERT_INTO_CLOSE)
+	}
+
+	v := strings.Split(line, ",")
+
+	return v[0]
 }
 
 func (Table) skip(line string) bool {

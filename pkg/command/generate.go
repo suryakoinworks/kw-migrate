@@ -143,7 +143,7 @@ func (g generate) Call(schema string) error {
 	schemaTool := db.NewSchema(g.connection)
 	cTable := schemaTool.ListTable(nWorker, schema, schemaConfig["excludes"]...)
 
-	ddlTool := db.NewTable(g.config.PgDump, source)
+	ddlTool := db.NewTable(g.config.PgDump, source, g.connection)
 	cDdl := make(chan db.Ddl, nWorker)
 	cInsert := make(chan db.Ddl, nWorker)
 	tTable := schemaTool.CountTable(schema, len(schemaConfig["excludes"]))
