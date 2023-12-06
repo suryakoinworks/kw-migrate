@@ -121,6 +121,7 @@ func (t Table) Generate(name string, schemaOnly bool) Ddl {
 		}
 
 		if waitForSemicolon {
+			insertScript.WriteString("\n")
 			insertScript.WriteString(line)
 
 			if !t.waitForSemicolon(line) {
