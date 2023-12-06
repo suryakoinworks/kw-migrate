@@ -84,12 +84,6 @@ func (c copy) Call(schema string, source string, destination string) error {
 		return nil
 	}
 
-	if destinationVersion > sourceVersion {
-		c.successColor.Printf("Your schema %s on %s has higher version than %s\n", c.boldFont.Sprint(schema), c.boldFont.Sprint(destination), c.boldFont.Sprint(source))
-
-		return nil
-	}
-
 	if sourceVersion == destinationVersion {
 		c.successColor.Printf("Migration for schema %s on %s has same version with %s\n", c.boldFont.Sprint(schema), c.boldFont.Sprint(destination), c.boldFont.Sprint(source))
 
