@@ -249,12 +249,12 @@ func main() {
 
 					t := table.NewWriter()
 					t.SetOutputMirror(os.Stdout)
-					t.AppendHeader(table.Row{"No", "Connection", "Schema", "Migration File", "Version", "Sync"})
+					t.AppendHeader(table.Row{"No", "Connection", "Schema", "Migration File", "Version", "Sync", "Diff"})
 
 					if ctx.NArg() == 2 {
 						db := ctx.Args().Get(0)
 						schema := ctx.Args().Get(1)
-						version := cmd.Call(db, schema)
+						version, diff := cmd.Call(db, schema)
 						if version == 0 {
 							return nil
 						}
@@ -279,7 +279,7 @@ func main() {
 						}
 
 						t.AppendRows([]table.Row{
-							{1, db, schema, v, version, status},
+							{1, db, schema, v, version, status, diff},
 						})
 						t.Render()
 
@@ -296,7 +296,7 @@ func main() {
 						}
 
 						for k := range source.Schemas {
-							version := cmd.Call(db, k)
+							version, diff := cmd.Call(db, k)
 							if version == 0 {
 								return nil
 							}
@@ -321,7 +321,7 @@ func main() {
 							}
 
 							t.AppendRows([]table.Row{
-								{number, db, k, v, version, status},
+								{number, db, k, v, version, status, diff},
 							})
 
 							number++
@@ -339,7 +339,7 @@ func main() {
 						}
 
 						for k := range source.Schemas {
-							version := cmd.Call(c, k)
+							version, diff := cmd.Call(c, k)
 							if version == 0 {
 								return nil
 							}
@@ -364,7 +364,7 @@ func main() {
 							}
 
 							t.AppendRows([]table.Row{
-								{number, c, k, v, version, status},
+								{number, c, k, v, version, status, diff},
 							})
 
 							number++
@@ -402,7 +402,7 @@ func main() {
 						return fmt.Errorf("connection '%s' not found", ctx.Args().Get(1))
 					}
 
-					t.AppendHeader(table.Row{"No", "Schema", "Migration File", fmt.Sprintf("%s Version", ctx.Args().Get(0)), fmt.Sprintf("%s Version", ctx.Args().Get(1)), "Sync"})
+					t.AppendHeader(table.Row{"No", "Schema", fmt.Sprintf("%s Version", ctx.Args().Get(0)), fmt.Sprintf("%s Version", ctx.Args().Get(1)), "Sync", "Diff"})
 
 					if ctx.NArg() == 3 {
 						schema := ctx.Args().Get(2)
@@ -416,23 +416,12 @@ func main() {
 							return fmt.Errorf("schema '%s' not found on %s", schema, ctx.Args().Get(1))
 						}
 
-						vSource, vCompare := cmd.Call(ctx.Args().Get(0), ctx.Args().Get(1), schema)
-						if vSource == 0 || vCompare == 0 {
+						vSource, vCompare, diff := cmd.Call(ctx.Args().Get(0), ctx.Args().Get(1), schema)
+						if vSource == 0 {
 							return nil
 						}
 
-						files, err := os.ReadDir(fmt.Sprintf("%s/%s", config.Migration.Folder, schema))
-						if err != nil {
-							fmt.Println(err.Error())
-
-							return nil
-						}
-
-						tFiles := len(files)
-						file := strings.Split(files[tFiles-1].Name(), "_")
-						version, _ := strconv.Atoi(file[0])
-
-						sync := uint(version) == vSource && vSource == vCompare
+						sync := vSource == vCompare
 						var status string
 						if sync {
 							status = color.New(color.FgGreen).Sprint("✔")
@@ -441,7 +430,7 @@ func main() {
 						}
 
 						t.AppendRows([]table.Row{
-							{1, schema, version, vSource, vCompare, status},
+							{1, schema, vSource, vCompare, status, diff},
 						})
 						t.Render()
 
@@ -455,8 +444,8 @@ func main() {
 								continue
 							}
 
-							vSource, vCompare := cmd.Call(ctx.Args().Get(0), ctx.Args().Get(1), k)
-							if vSource == 0 || vCompare == 0 {
+							vSource, vCompare, diff := cmd.Call(ctx.Args().Get(0), ctx.Args().Get(1), k)
+							if vSource == 0 {
 								return nil
 							}
 
@@ -480,7 +469,7 @@ func main() {
 							}
 
 							t.AppendRows([]table.Row{
-								{number, k, version, vSource, vCompare, status},
+								{number, k, version, vSource, vCompare, status, diff},
 							})
 
 							number++
