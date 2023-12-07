@@ -92,6 +92,10 @@ func (c compare) Call(source string, compare string, schema string) (uint, uint,
 		return 0, 0, 0
 	}
 
+	if sourceVersion == compareVersion {
+		return sourceVersion, compareVersion, 0
+	}
+
 	version := sourceVersion
 	breakPoint := compareVersion
 	if breakPoint < version {
